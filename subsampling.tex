@@ -1,0 +1,686 @@
+% Options for packages loaded elsewhere
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\PassOptionsToPackage{dvipsnames,svgnames,x11names}{xcolor}
+%
+\documentclass[
+  a4paper,
+]{article}
+\usepackage{xcolor}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{5}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+% Make \paragraph and \subparagraph free-standing
+\makeatletter
+\ifx\paragraph\undefined\else
+  \let\oldparagraph\paragraph
+  \renewcommand{\paragraph}{
+    \@ifstar
+      \xxxParagraphStar
+      \xxxParagraphNoStar
+  }
+  \newcommand{\xxxParagraphStar}[1]{\oldparagraph*{#1}\mbox{}}
+  \newcommand{\xxxParagraphNoStar}[1]{\oldparagraph{#1}\mbox{}}
+\fi
+\ifx\subparagraph\undefined\else
+  \let\oldsubparagraph\subparagraph
+  \renewcommand{\subparagraph}{
+    \@ifstar
+      \xxxSubParagraphStar
+      \xxxSubParagraphNoStar
+  }
+  \newcommand{\xxxSubParagraphStar}[1]{\oldsubparagraph*{#1}\mbox{}}
+  \newcommand{\xxxSubParagraphNoStar}[1]{\oldsubparagraph{#1}\mbox{}}
+\fi
+\makeatother
+
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{241,243,245}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.68,0.00,0.00}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.37,0.37,0.37}{#1}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.40,0.45,0.13}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.68,0.00,0.00}{#1}}
+\newcommand{\BuiltInTok}[1]{\textcolor[rgb]{0.00,0.23,0.31}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.13,0.47,0.30}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.37,0.37,0.37}{#1}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.37,0.37,0.37}{\textit{#1}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.23,0.31}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.68,0.00,0.00}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.68,0.00,0.00}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.37,0.37,0.37}{\textit{#1}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.68,0.00,0.00}{#1}}
+\newcommand{\ExtensionTok}[1]{\textcolor[rgb]{0.00,0.23,0.31}{#1}}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.68,0.00,0.00}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.28,0.35,0.67}{#1}}
+\newcommand{\ImportTok}[1]{\textcolor[rgb]{0.00,0.46,0.62}{#1}}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.37,0.37,0.37}{#1}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.23,0.31}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{\textcolor[rgb]{0.00,0.23,0.31}{#1}}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.37,0.37,0.37}{#1}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.23,0.31}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.68,0.00,0.00}{#1}}
+\newcommand{\RegionMarkerTok}[1]{\textcolor[rgb]{0.00,0.23,0.31}{#1}}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.37,0.37,0.37}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.13,0.47,0.30}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.13,0.47,0.30}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.07,0.07,0.07}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.13,0.47,0.30}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.37,0.37,0.37}{\textit{#1}}}
+
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\usepackage{graphicx}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
+}
+% Set default figure placement to htbp
+\def\fps@figure{htbp}
+\makeatother
+
+
+
+
+
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+
+
+ 
+
+
+\usepackage{ctex}
+\makeatletter
+\@ifpackageloaded{tcolorbox}{}{\usepackage[skins,breakable]{tcolorbox}}
+\@ifpackageloaded{fontawesome5}{}{\usepackage{fontawesome5}}
+\definecolor{quarto-callout-color}{HTML}{909090}
+\definecolor{quarto-callout-note-color}{HTML}{0758E5}
+\definecolor{quarto-callout-important-color}{HTML}{CC1914}
+\definecolor{quarto-callout-warning-color}{HTML}{EB9113}
+\definecolor{quarto-callout-tip-color}{HTML}{00A047}
+\definecolor{quarto-callout-caution-color}{HTML}{FC5300}
+\definecolor{quarto-callout-color-frame}{HTML}{acacac}
+\definecolor{quarto-callout-note-color-frame}{HTML}{4582ec}
+\definecolor{quarto-callout-important-color-frame}{HTML}{d9534f}
+\definecolor{quarto-callout-warning-color-frame}{HTML}{f0ad4e}
+\definecolor{quarto-callout-tip-color-frame}{HTML}{02b875}
+\definecolor{quarto-callout-caution-color-frame}{HTML}{fd7e14}
+\makeatother
+\makeatletter
+\@ifpackageloaded{caption}{}{\usepackage{caption}}
+\AtBeginDocument{%
+\ifdefined\contentsname
+  \renewcommand*\contentsname{Table of contents}
+\else
+  \newcommand\contentsname{Table of contents}
+\fi
+\ifdefined\listfigurename
+  \renewcommand*\listfigurename{List of Figures}
+\else
+  \newcommand\listfigurename{List of Figures}
+\fi
+\ifdefined\listtablename
+  \renewcommand*\listtablename{List of Tables}
+\else
+  \newcommand\listtablename{List of Tables}
+\fi
+\ifdefined\figurename
+  \renewcommand*\figurename{Figure}
+\else
+  \newcommand\figurename{Figure}
+\fi
+\ifdefined\tablename
+  \renewcommand*\tablename{Table}
+\else
+  \newcommand\tablename{Table}
+\fi
+}
+\@ifpackageloaded{float}{}{\usepackage{float}}
+\floatstyle{ruled}
+\@ifundefined{c@chapter}{\newfloat{codelisting}{h}{lop}}{\newfloat{codelisting}{h}{lop}[chapter]}
+\floatname{codelisting}{Listing}
+\newcommand*\listoflistings{\listof{codelisting}{List of Listings}}
+\makeatother
+\makeatletter
+\makeatother
+\makeatletter
+\@ifpackageloaded{caption}{}{\usepackage{caption}}
+\@ifpackageloaded{subcaption}{}{\usepackage{subcaption}}
+\makeatother
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={大规模数据子抽样统计推断分析},
+  pdfauthor={Chuanmu Hu},
+  colorlinks=true,
+  linkcolor={blue},
+  filecolor={Maroon},
+  citecolor={Blue},
+  urlcolor={Blue},
+  pdfcreator={LaTeX via pandoc}}
+
+
+\title{大规模数据子抽样统计推断分析}
+\usepackage{etoolbox}
+\makeatletter
+\providecommand{\subtitle}[1]{% add subtitle to \maketitle
+  \apptocmd{\@title}{\par {\large #1 \par}}{}{}
+}
+\makeatother
+\subtitle{基于NYC Taxi数据集的案例研究}
+\author{Chuanmu Hu}
+\date{2026-02-06}
+\begin{document}
+\maketitle
+
+\renewcommand*\contentsname{Table of contents}
+{
+\hypersetup{linkcolor=}
+\setcounter{tocdepth}{3}
+\tableofcontents
+}
+
+\section{简介}\label{ux7b80ux4ecb}
+
+当数据量达到100GB级别时，传统的全量分析方法在内存和计算时间上都面临挑战。本文档演示如何使用\textbf{子抽样（Subsampling）}方法进行统计推断，并验证其有效性。
+
+\subsection{使用的方法}\label{ux4f7fux7528ux7684ux65b9ux6cd5}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{简单随机子抽样} - 多次抽取小样本估计参数
+\item
+  \textbf{分层子抽样} - 按类别分层后抽样
+\item
+  \textbf{Bag of Little Bootstraps (BLB)} -
+  结合子抽样与Bootstrap的回归推断
+\end{enumerate}
+
+\section{数据准备}\label{ux6570ux636eux51c6ux5907}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(dplyr)}
+\FunctionTok{library}\NormalTok{(purrr)}
+\FunctionTok{library}\NormalTok{(ggplot2)}
+\FunctionTok{library}\NormalTok{(arrow)}
+
+\CommentTok{\# 设置主题}
+\FunctionTok{theme\_set}\NormalTok{(}\FunctionTok{theme\_minimal}\NormalTok{(}\AttributeTok{base\_size =} \DecValTok{12}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# 下载NYC Taxi数据（2023年1月，约300万行）}
+\NormalTok{temp\_file }\OtherTok{\textless{}{-}} \FunctionTok{tempfile}\NormalTok{(}\AttributeTok{fileext =} \StringTok{".parquet"}\NormalTok{)}
+\FunctionTok{download.file}\NormalTok{(}
+
+\StringTok{"https://d37ci6vzurychx.cloudfront.net/trip{-}data/yellow\_tripdata\_2023{-}01.parquet"}\NormalTok{,}
+\NormalTok{  temp\_file, }\AttributeTok{mode =} \StringTok{"wb"}\NormalTok{, }\AttributeTok{quiet =} \ConstantTok{TRUE}
+\NormalTok{)}
+
+\CommentTok{\# 读取数据}
+\NormalTok{taxi\_raw }\OtherTok{\textless{}{-}} \FunctionTok{read\_parquet}\NormalTok{(temp\_file)}
+
+\CommentTok{\# 数据清洗}
+\NormalTok{taxi\_clean }\OtherTok{\textless{}{-}}\NormalTok{ taxi\_raw }\SpecialCharTok{|\textgreater{}}
+  \FunctionTok{filter}\NormalTok{(}
+\NormalTok{    fare\_amount }\SpecialCharTok{\textgreater{}} \DecValTok{0}\NormalTok{, fare\_amount }\SpecialCharTok{\textless{}} \DecValTok{500}\NormalTok{,}
+\NormalTok{    trip\_distance }\SpecialCharTok{\textgreater{}} \DecValTok{0}\NormalTok{, trip\_distance }\SpecialCharTok{\textless{}} \DecValTok{100}\NormalTok{,}
+\NormalTok{    tip\_amount }\SpecialCharTok{\textgreater{}=} \DecValTok{0}\NormalTok{, tip\_amount }\SpecialCharTok{\textless{}} \DecValTok{200}\NormalTok{,}
+\NormalTok{    passenger\_count }\SpecialCharTok{\textgreater{}} \DecValTok{0}\NormalTok{, passenger\_count }\SpecialCharTok{\textless{}=} \DecValTok{6}
+\NormalTok{  )}
+
+\FunctionTok{cat}\NormalTok{(}\StringTok{"数据维度:"}\NormalTok{, }\FunctionTok{nrow}\NormalTok{(taxi\_clean), }\StringTok{"行 ×"}\NormalTok{, }\FunctionTok{ncol}\NormalTok{(taxi\_clean), }\StringTok{"列}\SpecialCharTok{\textbackslash{}n}\StringTok{"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+数据维度: 2884159 行 × 19 列
+\end{verbatim}
+
+\section{方法1:
+简单随机子抽样推断}\label{ux65b9ux6cd51-ux7b80ux5355ux968fux673aux5b50ux62bdux6837ux63a8ux65ad}
+
+\subsection{核心函数}\label{ux6838ux5fc3ux51fdux6570}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{simple\_subsample\_inference }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{(data, variable, }\AttributeTok{n\_subsamples =} \DecValTok{30}\NormalTok{,}
+                                        \AttributeTok{subsample\_size =} \DecValTok{10000}\NormalTok{) \{}
+\NormalTok{  true\_mean }\OtherTok{\textless{}{-}} \FunctionTok{mean}\NormalTok{(data[[variable]], }\AttributeTok{na.rm =} \ConstantTok{TRUE}\NormalTok{)}
+  
+\NormalTok{  results }\OtherTok{\textless{}{-}} \FunctionTok{map\_dfr}\NormalTok{(}\DecValTok{1}\SpecialCharTok{:}\NormalTok{n\_subsamples, }\ControlFlowTok{function}\NormalTok{(i) \{}
+\NormalTok{    subsample }\OtherTok{\textless{}{-}}\NormalTok{ data }\SpecialCharTok{|\textgreater{}} \FunctionTok{slice\_sample}\NormalTok{(}\AttributeTok{n =}\NormalTok{ subsample\_size)}
+\NormalTok{    sample\_mean }\OtherTok{\textless{}{-}} \FunctionTok{mean}\NormalTok{(subsample[[variable]], }\AttributeTok{na.rm =} \ConstantTok{TRUE}\NormalTok{)}
+\NormalTok{    sample\_se }\OtherTok{\textless{}{-}} \FunctionTok{sd}\NormalTok{(subsample[[variable]], }\AttributeTok{na.rm =} \ConstantTok{TRUE}\NormalTok{) }\SpecialCharTok{/} \FunctionTok{sqrt}\NormalTok{(subsample\_size)}
+    
+    \FunctionTok{tibble}\NormalTok{(}
+      \AttributeTok{rep\_id =}\NormalTok{ i,}
+      \AttributeTok{estimate =}\NormalTok{ sample\_mean,}
+      \AttributeTok{se =}\NormalTok{ sample\_se,}
+      \AttributeTok{ci\_lower =}\NormalTok{ sample\_mean }\SpecialCharTok{{-}} \FloatTok{1.96} \SpecialCharTok{*}\NormalTok{ sample\_se,}
+      \AttributeTok{ci\_upper =}\NormalTok{ sample\_mean }\SpecialCharTok{+} \FloatTok{1.96} \SpecialCharTok{*}\NormalTok{ sample\_se,}
+      \AttributeTok{covers\_true =}\NormalTok{ (ci\_lower }\SpecialCharTok{\textless{}=}\NormalTok{ true\_mean) }\SpecialCharTok{\&}\NormalTok{ (true\_mean }\SpecialCharTok{\textless{}=}\NormalTok{ ci\_upper)}
+\NormalTok{    )}
+\NormalTok{  \})}
+  
+  \FunctionTok{list}\NormalTok{(}
+    \AttributeTok{results =}\NormalTok{ results,}
+    \AttributeTok{summary =} \FunctionTok{tibble}\NormalTok{(}
+      \AttributeTok{variable =}\NormalTok{ variable,}
+      \AttributeTok{true\_mean =}\NormalTok{ true\_mean,}
+      \AttributeTok{subsample\_mean =} \FunctionTok{mean}\NormalTok{(results}\SpecialCharTok{$}\NormalTok{estimate),}
+      \AttributeTok{subsample\_se =} \FunctionTok{sd}\NormalTok{(results}\SpecialCharTok{$}\NormalTok{estimate),}
+      \AttributeTok{coverage =} \FunctionTok{mean}\NormalTok{(results}\SpecialCharTok{$}\NormalTok{covers\_true),}
+      \AttributeTok{relative\_bias =}\NormalTok{ (}\FunctionTok{mean}\NormalTok{(results}\SpecialCharTok{$}\NormalTok{estimate) }\SpecialCharTok{{-}}\NormalTok{ true\_mean) }\SpecialCharTok{/}\NormalTok{ true\_mean }\SpecialCharTok{*} \DecValTok{100}
+\NormalTok{    )}
+\NormalTok{  )}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\subsection{多变量推断}\label{ux591aux53d8ux91cfux63a8ux65ad}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{set.seed}\NormalTok{(}\DecValTok{42}\NormalTok{)}
+
+\NormalTok{fare\_inference }\OtherTok{\textless{}{-}} \FunctionTok{simple\_subsample\_inference}\NormalTok{(taxi\_clean, }\StringTok{"fare\_amount"}\NormalTok{)}
+\NormalTok{tip\_inference }\OtherTok{\textless{}{-}} \FunctionTok{simple\_subsample\_inference}\NormalTok{(taxi\_clean, }\StringTok{"tip\_amount"}\NormalTok{)}
+\NormalTok{distance\_inference }\OtherTok{\textless{}{-}} \FunctionTok{simple\_subsample\_inference}\NormalTok{(taxi\_clean, }\StringTok{"trip\_distance"}\NormalTok{)}
+
+\CommentTok{\# 汇总结果}
+\NormalTok{all\_summaries }\OtherTok{\textless{}{-}} \FunctionTok{bind\_rows}\NormalTok{(}
+\NormalTok{  fare\_inference}\SpecialCharTok{$}\NormalTok{summary,}
+\NormalTok{  tip\_inference}\SpecialCharTok{$}\NormalTok{summary,}
+\NormalTok{  distance\_inference}\SpecialCharTok{$}\NormalTok{summary}
+\NormalTok{)}
+
+\NormalTok{all\_summaries }\SpecialCharTok{|\textgreater{}}
+  \FunctionTok{mutate}\NormalTok{(}\FunctionTok{across}\NormalTok{(}\FunctionTok{where}\NormalTok{(is.numeric), }\SpecialCharTok{\textasciitilde{}}\FunctionTok{round}\NormalTok{(.x, }\DecValTok{4}\NormalTok{))) }\SpecialCharTok{|\textgreater{}}
+\NormalTok{  knitr}\SpecialCharTok{::}\FunctionTok{kable}\NormalTok{(}
+    \AttributeTok{col.names =} \FunctionTok{c}\NormalTok{(}\StringTok{"变量"}\NormalTok{, }\StringTok{"真实均值"}\NormalTok{, }\StringTok{"子抽样均值"}\NormalTok{, }\StringTok{"标准误"}\NormalTok{, }\StringTok{"覆盖率"}\NormalTok{, }\StringTok{"相对偏差\%"}\NormalTok{),}
+    \AttributeTok{caption =} \StringTok{"子抽样推断结果汇总"}
+\NormalTok{  )}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{longtable}[]{@{}lrrrrr@{}}
+\caption{子抽样推断结果汇总}\tabularnewline
+\toprule\noalign{}
+变量 & 真实均值 & 子抽样均值 & 标准误 & 覆盖率 & 相对偏差\% \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+变量 & 真实均值 & 子抽样均值 & 标准误 & 覆盖率 & 相对偏差\% \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+fare\_amount & 18.5411 & 18.5656 & 0.1963 & 0.9000 & 0.1323 \\
+tip\_amount & 3.3996 & 3.3987 & 0.0373 & 0.9333 & -0.0270 \\
+trip\_distance & 3.4222 & 3.4355 & 0.0398 & 0.9333 & 0.3906 \\
+\end{longtable}
+
+\subsection{可视化：车费估计分布}\label{ux53efux89c6ux5316ux8f66ux8d39ux4f30ux8ba1ux5206ux5e03}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{ggplot}\NormalTok{(fare\_inference}\SpecialCharTok{$}\NormalTok{results, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =} \FunctionTok{factor}\NormalTok{(rep\_id), }\AttributeTok{y =}\NormalTok{ estimate)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_point}\NormalTok{(}\AttributeTok{color =} \StringTok{"steelblue"}\NormalTok{, }\AttributeTok{size =} \DecValTok{2}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_errorbar}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{ymin =}\NormalTok{ ci\_lower, }\AttributeTok{ymax =}\NormalTok{ ci\_upper), }\AttributeTok{width =} \FloatTok{0.3}\NormalTok{, }\AttributeTok{alpha =} \FloatTok{0.5}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_hline}\NormalTok{(}\AttributeTok{yintercept =}\NormalTok{ fare\_inference}\SpecialCharTok{$}\NormalTok{summary}\SpecialCharTok{$}\NormalTok{true\_mean, }
+             \AttributeTok{color =} \StringTok{"red"}\NormalTok{, }\AttributeTok{linetype =} \StringTok{"dashed"}\NormalTok{, }\AttributeTok{linewidth =} \DecValTok{1}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}
+    \AttributeTok{title =} \StringTok{"车费均值的子抽样估计"}\NormalTok{,}
+    \AttributeTok{subtitle =} \FunctionTok{sprintf}\NormalTok{(}\StringTok{"红线为全数据均值 $\%.2f，子抽样覆盖率 \%.1f\%\%"}\NormalTok{,}
+\NormalTok{                       fare\_inference}\SpecialCharTok{$}\NormalTok{summary}\SpecialCharTok{$}\NormalTok{true\_mean,}
+\NormalTok{                       fare\_inference}\SpecialCharTok{$}\NormalTok{summary}\SpecialCharTok{$}\NormalTok{coverage }\SpecialCharTok{*} \DecValTok{100}\NormalTok{),}
+    \AttributeTok{x =} \StringTok{"子样本编号"}\NormalTok{, }\AttributeTok{y =} \StringTok{"车费均值估计 ($)"}
+\NormalTok{  )}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}[H]
+
+\centering{
+
+\pandocbounded{\includegraphics[keepaspectratio]{subsampling_files/figure-pdf/fig-fare-distribution-1.pdf}}
+
+}
+
+\caption{\label{fig-fare-distribution}30次子抽样的车费均值估计及95\%置信区间}
+
+\end{figure}%
+
+\section{方法2:
+分层子抽样推断}\label{ux65b9ux6cd52-ux5206ux5c42ux5b50ux62bdux6837ux63a8ux65ad}
+
+按支付方式分层分析小费差异。
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# 数据预处理}
+\NormalTok{payment\_analysis }\OtherTok{\textless{}{-}}\NormalTok{ taxi\_clean }\SpecialCharTok{|\textgreater{}}
+  \FunctionTok{filter}\NormalTok{(payment\_type }\SpecialCharTok{\%in\%} \FunctionTok{c}\NormalTok{(}\DecValTok{1}\NormalTok{, }\DecValTok{2}\NormalTok{)) }\SpecialCharTok{|\textgreater{}}
+  \FunctionTok{mutate}\NormalTok{(}\AttributeTok{payment\_type =} \FunctionTok{if\_else}\NormalTok{(payment\_type }\SpecialCharTok{==} \DecValTok{1}\NormalTok{, }\StringTok{"信用卡"}\NormalTok{, }\StringTok{"现金"}\NormalTok{))}
+
+\CommentTok{\# 分层抽样函数}
+\NormalTok{stratified\_inference }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{(data, }\AttributeTok{n\_reps =} \DecValTok{50}\NormalTok{, }\AttributeTok{sample\_per\_stratum =} \DecValTok{5000}\NormalTok{) \{}
+  \FunctionTok{map\_dfr}\NormalTok{(}\DecValTok{1}\SpecialCharTok{:}\NormalTok{n\_reps, }\ControlFlowTok{function}\NormalTok{(i) \{}
+\NormalTok{    data }\SpecialCharTok{|\textgreater{}}
+      \FunctionTok{slice\_sample}\NormalTok{(}\AttributeTok{n =}\NormalTok{ sample\_per\_stratum, }\AttributeTok{by =}\NormalTok{ payment\_type) }\SpecialCharTok{|\textgreater{}}
+      \FunctionTok{summarise}\NormalTok{(}\AttributeTok{mean\_tip =} \FunctionTok{mean}\NormalTok{(tip\_amount), }\AttributeTok{.by =}\NormalTok{ payment\_type) }\SpecialCharTok{|\textgreater{}}
+      \FunctionTok{mutate}\NormalTok{(}\AttributeTok{rep\_id =}\NormalTok{ i)}
+\NormalTok{  \})}
+\NormalTok{\}}
+
+\FunctionTok{set.seed}\NormalTok{(}\DecValTok{123}\NormalTok{)}
+\NormalTok{strat\_results }\OtherTok{\textless{}{-}} \FunctionTok{stratified\_inference}\NormalTok{(payment\_analysis)}
+
+\CommentTok{\# 计算真实值}
+\NormalTok{true\_by\_payment }\OtherTok{\textless{}{-}}\NormalTok{ payment\_analysis }\SpecialCharTok{|\textgreater{}}
+  \FunctionTok{summarise}\NormalTok{(}\AttributeTok{true\_mean =} \FunctionTok{mean}\NormalTok{(tip\_amount), }\AttributeTok{.by =}\NormalTok{ payment\_type)}
+
+\CommentTok{\# 汇总}
+\NormalTok{strat\_summary }\OtherTok{\textless{}{-}}\NormalTok{ strat\_results }\SpecialCharTok{|\textgreater{}}
+  \FunctionTok{summarise}\NormalTok{(}
+    \AttributeTok{est\_mean =} \FunctionTok{mean}\NormalTok{(mean\_tip),}
+    \AttributeTok{se =} \FunctionTok{sd}\NormalTok{(mean\_tip),}
+    \AttributeTok{ci\_lower =} \FunctionTok{quantile}\NormalTok{(mean\_tip, }\FloatTok{0.025}\NormalTok{),}
+    \AttributeTok{ci\_upper =} \FunctionTok{quantile}\NormalTok{(mean\_tip, }\FloatTok{0.975}\NormalTok{),}
+    \AttributeTok{.by =}\NormalTok{ payment\_type}
+\NormalTok{  ) }\SpecialCharTok{|\textgreater{}}
+  \FunctionTok{left\_join}\NormalTok{(true\_by\_payment, }\AttributeTok{by =} \StringTok{"payment\_type"}\NormalTok{)}
+
+\NormalTok{strat\_summary }\SpecialCharTok{|\textgreater{}}
+  \FunctionTok{mutate}\NormalTok{(}\FunctionTok{across}\NormalTok{(}\FunctionTok{where}\NormalTok{(is.numeric), }\SpecialCharTok{\textasciitilde{}}\FunctionTok{round}\NormalTok{(.x, }\DecValTok{3}\NormalTok{))) }\SpecialCharTok{|\textgreater{}}
+\NormalTok{  knitr}\SpecialCharTok{::}\FunctionTok{kable}\NormalTok{(}\AttributeTok{caption =} \StringTok{"按支付方式分层的小费估计"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{longtable}[]{@{}lrrrrr@{}}
+\caption{按支付方式分层的小费估计}\tabularnewline
+\toprule\noalign{}
+payment\_type & est\_mean & se & ci\_lower & ci\_upper & true\_mean \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+payment\_type & est\_mean & se & ci\_lower & ci\_upper & true\_mean \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+现金 & 0.000 & 0.001 & 0.000 & 0.002 & 0.000 \\
+信用卡 & 4.164 & 0.054 & 4.071 & 4.258 & 4.171 \\
+\end{longtable}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{ggplot}\NormalTok{(strat\_results, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ payment\_type, }\AttributeTok{y =}\NormalTok{ mean\_tip, }\AttributeTok{fill =}\NormalTok{ payment\_type)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_boxplot}\NormalTok{(}\AttributeTok{alpha =} \FloatTok{0.7}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_point}\NormalTok{(}\AttributeTok{data =}\NormalTok{ true\_by\_payment, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{y =}\NormalTok{ true\_mean), }
+             \AttributeTok{color =} \StringTok{"red"}\NormalTok{, }\AttributeTok{size =} \DecValTok{4}\NormalTok{, }\AttributeTok{shape =} \DecValTok{18}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{scale\_fill\_brewer}\NormalTok{(}\AttributeTok{palette =} \StringTok{"Set2"}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}
+    \AttributeTok{title =} \StringTok{"按支付方式分层的小费子抽样分布"}\NormalTok{,}
+    \AttributeTok{subtitle =} \StringTok{"红色菱形为全数据真实均值"}\NormalTok{,}
+    \AttributeTok{x =} \StringTok{"支付方式"}\NormalTok{, }\AttributeTok{y =} \StringTok{"平均小费 ($)"}
+\NormalTok{  ) }\SpecialCharTok{+}
+  \FunctionTok{theme}\NormalTok{(}\AttributeTok{legend.position =} \StringTok{"none"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}[H]
+
+\centering{
+
+\pandocbounded{\includegraphics[keepaspectratio]{subsampling_files/figure-pdf/fig-stratified-1.pdf}}
+
+}
+
+\caption{\label{fig-stratified}不同支付方式的小费分布}
+
+\end{figure}%
+
+\section{方法3:
+BLB回归推断}\label{ux65b9ux6cd53-blbux56deux5f52ux63a8ux65ad}
+
+使用 Bag of Little Bootstraps 进行回归系数推断。
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{blb\_regression }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{(data, }\AttributeTok{n\_subsamples =} \DecValTok{10}\NormalTok{, }\AttributeTok{subsample\_size =} \DecValTok{5000}\NormalTok{, }
+                            \AttributeTok{n\_bootstrap =} \DecValTok{200}\NormalTok{) \{}
+  
+\NormalTok{  results }\OtherTok{\textless{}{-}} \FunctionTok{map\_dfr}\NormalTok{(}\DecValTok{1}\SpecialCharTok{:}\NormalTok{n\_subsamples, }\ControlFlowTok{function}\NormalTok{(i) \{}
+\NormalTok{    subsample }\OtherTok{\textless{}{-}}\NormalTok{ data }\SpecialCharTok{|\textgreater{}} \FunctionTok{slice\_sample}\NormalTok{(}\AttributeTok{n =}\NormalTok{ subsample\_size)}
+\NormalTok{    model }\OtherTok{\textless{}{-}} \FunctionTok{lm}\NormalTok{(fare\_amount }\SpecialCharTok{\textasciitilde{}}\NormalTok{ trip\_distance }\SpecialCharTok{+}\NormalTok{ passenger\_count, }\AttributeTok{data =}\NormalTok{ subsample)}
+    
+    \CommentTok{\# Bootstrap}
+\NormalTok{    boot\_coefs }\OtherTok{\textless{}{-}} \FunctionTok{map\_dfr}\NormalTok{(}\DecValTok{1}\SpecialCharTok{:}\NormalTok{n\_bootstrap, }\ControlFlowTok{function}\NormalTok{(b) \{}
+\NormalTok{      boot\_idx }\OtherTok{\textless{}{-}} \FunctionTok{sample}\NormalTok{(}\FunctionTok{nrow}\NormalTok{(subsample), }\AttributeTok{replace =} \ConstantTok{TRUE}\NormalTok{)}
+\NormalTok{      boot\_model }\OtherTok{\textless{}{-}} \FunctionTok{lm}\NormalTok{(fare\_amount }\SpecialCharTok{\textasciitilde{}}\NormalTok{ trip\_distance }\SpecialCharTok{+}\NormalTok{ passenger\_count, }
+                       \AttributeTok{data =}\NormalTok{ subsample[boot\_idx, ])}
+      \FunctionTok{tibble}\NormalTok{(}
+        \AttributeTok{intercept =} \FunctionTok{coef}\NormalTok{(boot\_model)[}\DecValTok{1}\NormalTok{],}
+        \AttributeTok{beta\_distance =} \FunctionTok{coef}\NormalTok{(boot\_model)[}\DecValTok{2}\NormalTok{],}
+        \AttributeTok{beta\_passenger =} \FunctionTok{coef}\NormalTok{(boot\_model)[}\DecValTok{3}\NormalTok{]}
+\NormalTok{      )}
+\NormalTok{    \})}
+    
+    \FunctionTok{tibble}\NormalTok{(}
+      \AttributeTok{subsample\_id =}\NormalTok{ i,}
+      \AttributeTok{intercept =} \FunctionTok{coef}\NormalTok{(model)[}\DecValTok{1}\NormalTok{],}
+      \AttributeTok{beta\_distance =} \FunctionTok{coef}\NormalTok{(model)[}\DecValTok{2}\NormalTok{],}
+      \AttributeTok{beta\_passenger =} \FunctionTok{coef}\NormalTok{(model)[}\DecValTok{3}\NormalTok{],}
+      \AttributeTok{se\_distance =} \FunctionTok{sd}\NormalTok{(boot\_coefs}\SpecialCharTok{$}\NormalTok{beta\_distance),}
+      \AttributeTok{ci\_lower\_distance =} \FunctionTok{quantile}\NormalTok{(boot\_coefs}\SpecialCharTok{$}\NormalTok{beta\_distance, }\FloatTok{0.025}\NormalTok{),}
+      \AttributeTok{ci\_upper\_distance =} \FunctionTok{quantile}\NormalTok{(boot\_coefs}\SpecialCharTok{$}\NormalTok{beta\_distance, }\FloatTok{0.975}\NormalTok{)}
+\NormalTok{    )}
+\NormalTok{  \})}
+  
+\NormalTok{  results}
+\NormalTok{\}}
+
+\FunctionTok{set.seed}\NormalTok{(}\DecValTok{456}\NormalTok{)}
+\NormalTok{blb\_reg\_results }\OtherTok{\textless{}{-}} \FunctionTok{blb\_regression}\NormalTok{(taxi\_clean, }\AttributeTok{n\_subsamples =} \DecValTok{20}\NormalTok{, }
+                                   \AttributeTok{subsample\_size =} \DecValTok{10000}\NormalTok{, }\AttributeTok{n\_bootstrap =} \DecValTok{300}\NormalTok{)}
+
+\CommentTok{\# 全数据模型对比}
+\NormalTok{full\_model }\OtherTok{\textless{}{-}} \FunctionTok{lm}\NormalTok{(fare\_amount }\SpecialCharTok{\textasciitilde{}}\NormalTok{ trip\_distance }\SpecialCharTok{+}\NormalTok{ passenger\_count, }\AttributeTok{data =}\NormalTok{ taxi\_clean)}
+
+\CommentTok{\# 汇总}
+\NormalTok{reg\_summary }\OtherTok{\textless{}{-}}\NormalTok{ blb\_reg\_results }\SpecialCharTok{|\textgreater{}}
+  \FunctionTok{summarise}\NormalTok{(}
+    \FunctionTok{across}\NormalTok{(}\FunctionTok{c}\NormalTok{(intercept, beta\_distance, beta\_passenger), }
+           \FunctionTok{list}\NormalTok{(}\AttributeTok{mean =}\NormalTok{ mean, }\AttributeTok{se =}\NormalTok{ sd))}
+\NormalTok{  )}
+\end{Highlighting}
+\end{Shaded}
+
+\subsection{回归结果对比}\label{ux56deux5f52ux7ed3ux679cux5bf9ux6bd4}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{comparison }\OtherTok{\textless{}{-}} \FunctionTok{tibble}\NormalTok{(}
+\NormalTok{  参数 }\OtherTok{=} \FunctionTok{c}\NormalTok{(}\StringTok{"截距"}\NormalTok{, }\StringTok{"行程距离系数"}\NormalTok{, }\StringTok{"乘客数系数"}\NormalTok{),}
+\NormalTok{  BLB估计 }\OtherTok{=} \FunctionTok{c}\NormalTok{(reg\_summary}\SpecialCharTok{$}\NormalTok{intercept\_mean, reg\_summary}\SpecialCharTok{$}\NormalTok{beta\_distance\_mean, }
+\NormalTok{              reg\_summary}\SpecialCharTok{$}\NormalTok{beta\_passenger\_mean),}
+\NormalTok{  BLB标准误 }\OtherTok{=} \FunctionTok{c}\NormalTok{(reg\_summary}\SpecialCharTok{$}\NormalTok{intercept\_se, reg\_summary}\SpecialCharTok{$}\NormalTok{beta\_distance\_se, }
+\NormalTok{                reg\_summary}\SpecialCharTok{$}\NormalTok{beta\_passenger\_se),}
+\NormalTok{  全数据估计 }\OtherTok{=} \FunctionTok{coef}\NormalTok{(full\_model)}
+\NormalTok{) }\SpecialCharTok{|\textgreater{}}
+  \FunctionTok{mutate}\NormalTok{(}
+\NormalTok{    相对偏差 }\OtherTok{=}\NormalTok{ (BLB估计 }\SpecialCharTok{{-}}\NormalTok{ 全数据估计) }\SpecialCharTok{/}\NormalTok{ 全数据估计 }\SpecialCharTok{*} \DecValTok{100}\NormalTok{,}
+    \FunctionTok{across}\NormalTok{(}\FunctionTok{where}\NormalTok{(is.numeric), }\SpecialCharTok{\textasciitilde{}}\FunctionTok{round}\NormalTok{(.x, }\DecValTok{4}\NormalTok{))}
+\NormalTok{  )}
+
+\NormalTok{comparison }\SpecialCharTok{|\textgreater{}}\NormalTok{ knitr}\SpecialCharTok{::}\FunctionTok{kable}\NormalTok{(}\AttributeTok{caption =} \StringTok{"BLB与全数据回归系数对比"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{longtable}[]{@{}lrrrr@{}}
+\caption{BLB与全数据回归系数对比}\tabularnewline
+\toprule\noalign{}
+参数 & BLB估计 & BLB标准误 & 全数据估计 & 相对偏差 \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+参数 & BLB估计 & BLB标准误 & 全数据估计 & 相对偏差 \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+截距 & 5.8703 & 0.1308 & 5.8410 & 0.5019 \\
+行程距离系数 & 3.6778 & 0.0354 & 3.6777 & 0.0012 \\
+乘客数系数 & 0.0597 & 0.0506 & 0.0823 & -27.4744 \\
+\end{longtable}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{ggplot}\NormalTok{(blb\_reg\_results, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =} \FunctionTok{factor}\NormalTok{(subsample\_id), }\AttributeTok{y =}\NormalTok{ beta\_distance)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_point}\NormalTok{(}\AttributeTok{color =} \StringTok{"steelblue"}\NormalTok{, }\AttributeTok{size =} \FloatTok{2.5}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_errorbar}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{ymin =}\NormalTok{ ci\_lower\_distance, }\AttributeTok{ymax =}\NormalTok{ ci\_upper\_distance), }
+                \AttributeTok{width =} \FloatTok{0.3}\NormalTok{, }\AttributeTok{alpha =} \FloatTok{0.6}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_hline}\NormalTok{(}\AttributeTok{yintercept =} \FunctionTok{coef}\NormalTok{(full\_model)[}\DecValTok{2}\NormalTok{], }
+             \AttributeTok{color =} \StringTok{"red"}\NormalTok{, }\AttributeTok{linetype =} \StringTok{"dashed"}\NormalTok{, }\AttributeTok{linewidth =} \DecValTok{1}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}
+    \AttributeTok{title =} \StringTok{"行程距离系数的BLB估计"}\NormalTok{,}
+    \AttributeTok{subtitle =} \FunctionTok{sprintf}\NormalTok{(}\StringTok{"红线为全数据估计值 \%.3f，BLB均值 \%.3f"}\NormalTok{, }
+                       \FunctionTok{coef}\NormalTok{(full\_model)[}\DecValTok{2}\NormalTok{], }\FunctionTok{mean}\NormalTok{(blb\_reg\_results}\SpecialCharTok{$}\NormalTok{beta\_distance)),}
+    \AttributeTok{x =} \StringTok{"子样本编号"}\NormalTok{, }\AttributeTok{y =} \StringTok{"系数估计 ($/英里)"}
+\NormalTok{  )}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}[H]
+
+\centering{
+
+\pandocbounded{\includegraphics[keepaspectratio]{subsampling_files/figure-pdf/fig-blb-coef-1.pdf}}
+
+}
+
+\caption{\label{fig-blb-coef}行程距离系数的BLB估计}
+
+\end{figure}%
+
+\section{总结}\label{ux603bux7ed3}
+
+\begin{tcolorbox}[enhanced jigsaw, toprule=.15mm, arc=.35mm, bottomrule=.15mm, leftrule=.75mm, opacityback=0, left=2mm, rightrule=.15mm, titlerule=0mm, colbacktitle=quarto-callout-note-color!10!white, coltitle=black, bottomtitle=1mm, opacitybacktitle=0.6, title=\textcolor{quarto-callout-note-color}{\faInfo}\hspace{0.5em}{关键发现}, breakable, toptitle=1mm, colback=white, colframe=quarto-callout-note-color-frame]
+
+\begin{longtable}[]{@{}ll@{}}
+\toprule\noalign{}
+指标 & 结果 \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+平均车费 & \$18.54 \\
+平均小费 & \$3.4 \\
+平均行程 & 3.42 英里 \\
+每英里费率 & \$3.68 \\
+均值估计偏差 & \textless{} 0.5\% \\
+95\% CI覆盖率 & 87-93\% \\
+\end{longtable}
+
+\end{tcolorbox}
+
+\begin{tcolorbox}[enhanced jigsaw, toprule=.15mm, arc=.35mm, bottomrule=.15mm, leftrule=.75mm, opacityback=0, left=2mm, rightrule=.15mm, titlerule=0mm, colbacktitle=quarto-callout-tip-color!10!white, coltitle=black, bottomtitle=1mm, opacitybacktitle=0.6, title=\textcolor{quarto-callout-tip-color}{\faLightbulb}\hspace{0.5em}{子抽样方法建议}, breakable, toptitle=1mm, colback=white, colframe=quarto-callout-tip-color-frame]
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{子样本大小}: 5,000 - 10,000 行
+\item
+  \textbf{重复次数}: 20 - 50 次
+\item
+  \textbf{适用场景}: 点估计、置信区间、回归分析
+\item
+  使用约 \textbf{1\%} 的数据即可获得可靠估计
+\end{itemize}
+
+\end{tcolorbox}
+
+\section{附录：数据来源}\label{ux9644ux5f55ux6570ux636eux6765ux6e90}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{数据集}: NYC TLC Yellow Taxi Trip Records
+\item
+  \textbf{下载地址}:
+  \url{https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page}
+\item
+  \textbf{完整大小}: \textasciitilde120GB (2019-2023年)
+\item
+  \textbf{本次使用}: 2023年1月 (约300万行)
+\end{itemize}
+
+
+
+
+\end{document}
