@@ -3,12 +3,13 @@
 \PassOptionsToPackage{unicode}{hyperref}
 \PassOptionsToPackage{hyphens}{url}
 \PassOptionsToPackage{dvipsnames,svgnames,x11names}{xcolor}
+\PassOptionsToPackage{space}{xeCJK}
 %
 \documentclass[
-  a4paper,
-]{article}
+  letterpaper,
+  DIV=11,
+  numbers=noendperiod]{scrartcl}
 \usepackage{xcolor}
-\usepackage[margin=2.5cm]{geometry}
 \usepackage{amsmath,amssymb}
 \setcounter{secnumdepth}{5}
 \usepackage{iftex}
@@ -24,6 +25,15 @@
 \usepackage{lmodern}
 \ifPDFTeX\else
   % xetex/luatex font selection
+  \setmainfont[]{Noto Sans SC}
+  \ifXeTeX
+    \usepackage{xeCJK}
+    \setCJKmainfont[]{Noto Sans SC}
+  \fi
+  \ifLuaTeX
+    \usepackage[]{luatexja-fontspec}
+    \setmainjfont[]{Noto Sans SC}
+  \fi
 \fi
 % Use upquote if available, for straight quotes in verbatim environments
 \IfFileExists{upquote.sty}{\usepackage{upquote}}{}
@@ -146,7 +156,7 @@
  
 
 
-\usepackage{ctex}
+\KOMAoption{captions}{tableheading}
 \makeatletter
 \@ifpackageloaded{tcolorbox}{}{\usepackage[skins,breakable]{tcolorbox}}
 \@ifpackageloaded{fontawesome5}{}{\usepackage{fontawesome5}}
@@ -264,9 +274,18 @@
 \FunctionTok{library}\NormalTok{(purrr)}
 \FunctionTok{library}\NormalTok{(ggplot2)}
 \FunctionTok{library}\NormalTok{(arrow)}
+\FunctionTok{library}\NormalTok{(showtext)}
 
-\CommentTok{\# 设置主题}
-\FunctionTok{theme\_set}\NormalTok{(}\FunctionTok{theme\_minimal}\NormalTok{(}\AttributeTok{base\_size =} \DecValTok{12}\NormalTok{))}
+\CommentTok{\# 启用 showtext}
+\FunctionTok{showtext\_auto}\NormalTok{()}
+
+\CommentTok{\# 添加 Google Noto 中文字体（自动下载）}
+\FunctionTok{font\_add\_google}\NormalTok{(}\StringTok{"Noto Sans SC"}\NormalTok{, }\StringTok{"noto"}\NormalTok{)}
+
+\CommentTok{\# 设置 ggplot2 主题使用中文字体}
+\FunctionTok{theme\_set}\NormalTok{(}
+  \FunctionTok{theme\_minimal}\NormalTok{(}\AttributeTok{base\_size =} \DecValTok{12}\NormalTok{, }\AttributeTok{base\_family =} \StringTok{"noto"}\NormalTok{)}
+\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -630,7 +649,7 @@ BLB回归推断}\label{ux65b9ux6cd53-blbux56deux5f52ux63a8ux65ad}
 
 \section{总结}\label{ux603bux7ed3}
 
-\begin{tcolorbox}[enhanced jigsaw, toprule=.15mm, arc=.35mm, bottomrule=.15mm, leftrule=.75mm, opacityback=0, left=2mm, rightrule=.15mm, titlerule=0mm, colbacktitle=quarto-callout-note-color!10!white, coltitle=black, bottomtitle=1mm, opacitybacktitle=0.6, title=\textcolor{quarto-callout-note-color}{\faInfo}\hspace{0.5em}{关键发现}, breakable, toptitle=1mm, colback=white, colframe=quarto-callout-note-color-frame]
+\begin{tcolorbox}[enhanced jigsaw, opacityback=0, coltitle=black, colbacktitle=quarto-callout-note-color!10!white, breakable, colframe=quarto-callout-note-color-frame, arc=.35mm, bottomtitle=1mm, leftrule=.75mm, rightrule=.15mm, toptitle=1mm, colback=white, left=2mm, opacitybacktitle=0.6, title=\textcolor{quarto-callout-note-color}{\faInfo}\hspace{0.5em}{关键发现}, titlerule=0mm, toprule=.15mm, bottomrule=.15mm]
 
 \begin{longtable}[]{@{}ll@{}}
 \toprule\noalign{}
@@ -649,7 +668,7 @@ BLB回归推断}\label{ux65b9ux6cd53-blbux56deux5f52ux63a8ux65ad}
 
 \end{tcolorbox}
 
-\begin{tcolorbox}[enhanced jigsaw, toprule=.15mm, arc=.35mm, bottomrule=.15mm, leftrule=.75mm, opacityback=0, left=2mm, rightrule=.15mm, titlerule=0mm, colbacktitle=quarto-callout-tip-color!10!white, coltitle=black, bottomtitle=1mm, opacitybacktitle=0.6, title=\textcolor{quarto-callout-tip-color}{\faLightbulb}\hspace{0.5em}{子抽样方法建议}, breakable, toptitle=1mm, colback=white, colframe=quarto-callout-tip-color-frame]
+\begin{tcolorbox}[enhanced jigsaw, opacityback=0, coltitle=black, colbacktitle=quarto-callout-tip-color!10!white, breakable, colframe=quarto-callout-tip-color-frame, arc=.35mm, bottomtitle=1mm, leftrule=.75mm, rightrule=.15mm, toptitle=1mm, colback=white, left=2mm, opacitybacktitle=0.6, title=\textcolor{quarto-callout-tip-color}{\faLightbulb}\hspace{0.5em}{子抽样方法建议}, titlerule=0mm, toprule=.15mm, bottomrule=.15mm]
 
 \begin{itemize}
 \tightlist

@@ -15,10 +15,8 @@ format:
     toc-depth: 3
     number-sections: true
     pdf-engine: xelatex
-    include-in-header:
-      text: |
-        \usepackage{xeCJK}
-        \setCJKmainfont{SimSun}
+    CJKmainfont: "Noto Sans SC"
+    mainfont: "Noto Sans SC"
   docx:
     toc: true
     toc-depth: 3
