@@ -1,22 +1,22 @@
 ---
-title: "大规模数据子抽样统计推断分析"
-subtitle: "基于NYC Taxi数据集的案例研究"
-author: "Chuanmu Hu"
+title: "子抽样方法进行大数据统计推断"
+author: ""
 date: today
+lang: zh
 format:
   html:
     toc: true
     toc-depth: 3
+    number-sections: true
     code-fold: true
-    code-summary: "显示代码"
     theme: cosmo
   pdf:
+    documentclass: ctexart
     toc: true
-    toc-depth: 3
     number-sections: true
     pdf-engine: xelatex
-    CJKmainfont: "Noto Sans SC"
-    mainfont: "Noto Sans SC"
+    CJKmainfont: "Microsoft YaHei"
+    mainfont: "Microsoft YaHei"
   docx:
     toc: true
     toc-depth: 3
@@ -65,16 +65,20 @@ theme_set(
 #| label: load-data
 #| cache: true
 
-# 下载NYC Taxi数据（2023年1月，约300万行）
-temp_file <- tempfile(fileext = ".parquet")
-download.file(
+# 使用本地文件
+local_file <- "data/yellow_tripdata_2023-01.parquet"
 
-"https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2023-01.parquet",
-  temp_file, mode = "wb", quiet = TRUE
-)
+if (!file.exists(local_file)) {
+  # 如果本地没有，尝试下载
+  dir.create("data", showWarnings = FALSE)
+  download.file(
+    "https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2023-01.parquet",
+    local_file, mode = "wb", quiet = TRUE
+  )
+}
 
 # 读取数据
-taxi_raw <- read_parquet(temp_file)
+taxi_raw <- read_parquet(local_file)
 
 # 数据清洗
 taxi_clean <- taxi_raw |>
