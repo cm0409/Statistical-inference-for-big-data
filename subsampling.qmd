@@ -1,6 +1,7 @@
 ---
 title: "子抽样方法进行大数据统计推断"
-author: ""
+subtitle: "基于R的子抽样方法示例"
+author: "Chuanmu Hu"
 date: today
 lang: zh
 format:
