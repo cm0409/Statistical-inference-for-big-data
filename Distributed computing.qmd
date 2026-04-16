@@ -1,0 +1,86 @@
+---
+title: "分布式统计计算方法进行大数据统计推断"
+subtitle: "基于Spark的分布式统计计算方法示例"
+author: "Chuanmu Hu"
+date: today
+lang: zh
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    code-fold: true
+    theme: cosmo
+  pdf:
+    documentclass: ctexart
+    toc: true
+    number-sections: true
+    pdf-engine: xelatex
+    CJKmainfont: "Microsoft YaHei"
+    mainfont: "Microsoft YaHei"
+  docx:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+
+execute:
+  warning: false
+  message: false
+---
+# 分布式统计计算方法进行大数据统计推断
+
+## 简介
+当数据量达到100GB级别时，传统的全量分析方法在内存和计算时间上都面临挑战。本文档演示如何使用**分布式统计计算方法**进行统计推断，并验证其有效性。
+### 使用的方法
+1. **分布式数据处理** - 使用Spark进行数据预处理和统计计算
+2. **分布式Bootstrap** - 在分布式环境中进行Bootstrap抽样和推断
+3. **分布式线性回归** - 使用Spark MLlib进行分布式线性回归分析
+## 数据准备
+```{r}
+#| label: setup
+#| message: false
+#| warning: false
+#| echo: false
+#| results: "hide"
+#| include: false
+#| eval: false
+#| error: false
+#| cache: true
+#| cache.path: "cache/"
+#| cache.lazy: true
+#| cache.extra: true
+#| cache.rebuild: false
+#| cache.refresh: false
+#| cache.clear: false
+#| cache.lazy: true
+library(dplyr)
+library(purrr)
+library(ggplot2)
+library(arrow)
+library(showtext)
+# 启用 showtext
+showtext_auto()
+# 添加 Google Noto 中文字体（自动下载）
+font_add_google("Noto Sans SC", "noto")
+# 设置 ggplot2 主题使用中文字体
+theme_set(
+    theme_minimal(base_size = 12, base_family = "noto")
+    )
+```
+```{r}
+#| label: load-data
+#| cache: true
+library(arrow)
+data <- read_parquet("data.parquet")
+head(data)
+```
+```{r}
+#| label: data-summary
+summary(data)
+```
+```{r}
+#| label: data-plot
+ggplot(data, aes(x = variable1, y = variable2)) +
+    geom_point(alpha = 0.5) +
+    labs(title = "Variable1 vs Variable2", x = "Variable1", y = "Variable2")
+```
