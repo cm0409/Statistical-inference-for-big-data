@@ -146,7 +146,7 @@ generate_simulation_data <- function(
 
 load_empirical_data <- function(path, n_max = 150000, seed = 42) {
   if (!file.exists(path)) {
-    stop("实证数据文件不存在: ", path)
+    stop("Empirical data file not found / 实证数据文件不存在: ", path)
   }
 
   set.seed(seed)
@@ -663,7 +663,13 @@ plot_pareto <- function(summary_df, out_file) {
     ggplot2::geom_point(size = 3.2, alpha = 0.9) +
     ggplot2::facet_wrap(~track, scales = "free_x") +
     ggplot2::scale_color_viridis_d(option = "C") +
-    ggplot2::labs(title = "速度-精度帕累托对比", x = "平均计算时间（秒）", y = "系数绝对误差（越低越好）", color = "类别", shape = "方法")
+    ggplot2::labs(
+      title = "Speed-Accuracy Pareto / 速度-精度帕累托对比",
+      x = "Runtime (sec) / 计算时间（秒）",
+      y = "Coef absolute error (lower is better) / 系数绝对误差（越低越好）",
+      color = "Category / 类别",
+      shape = "Method / 方法"
+    )
   ggplot2::ggsave(out_file, p, width = 11, height = 6, dpi = 300)
 }
 
@@ -695,16 +701,25 @@ plot_radar <- function(summary_df, out_file) {
     dplyr::slice_min(order_by = mean_abs_error_coef, n = 1, with_ties = FALSE) |>
     dplyr::ungroup() |>
     dplyr::mutate(
-      精度 = scales::rescale(-mean_abs_error_coef, to = c(0, 1)),
-      效率 = scales::rescale(-mean_runtime_sec, to = c(0, 1)),
-      稳定性 = scales::rescale(-stability_coef_sd, to = c(0, 1)),
-      覆盖率 = clip01(mean_ci_cover_coef)
+      accuracy = scales::rescale(-mean_abs_error_coef, to = c(0, 1)),
+      efficiency = scales::rescale(-mean_runtime_sec, to = c(0, 1)),
+      stability = scales::rescale(-stability_coef_sd, to = c(0, 1)),
+      coverage = clip01(mean_ci_cover_coef)
     ) |>
-    dplyr::select(track, category, method, config_id, 精度, 效率, 稳定性, 覆盖率)
+    dplyr::select(track, category, method, config_id, accuracy, efficiency, stability, coverage)
 
   radar_long <- top_methods |>
-    tidyr::pivot_longer(cols = c("精度", "效率", "稳定性", "覆盖率"), names_to = "metric", values_to = "score") |>
-    dplyr::mutate(label = paste(track, category, method, config_id, sep = " | "))
+    tidyr::pivot_longer(cols = c("accuracy", "efficiency", "stability", "coverage"), names_to = "metric", values_to = "score") |>
+    dplyr::mutate(
+      metric = dplyr::recode(
+        metric,
+        accuracy = "Accuracy / 精度",
+        efficiency = "Efficiency / 效率",
+        stability = "Stability / 稳定性",
+        coverage = "Coverage / 覆盖率"
+      ),
+      label = paste(track, category, method, config_id, sep = " | ")
+    )
 
   p <- ggplot2::ggplot(radar_long, ggplot2::aes(x = metric, y = score, group = label, color = label)) +
     ggplot2::geom_polygon(fill = NA, linewidth = 0.9, alpha = 0.8) +
