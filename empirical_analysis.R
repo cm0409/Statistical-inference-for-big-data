@@ -75,7 +75,7 @@ save_to_ppt <- function(plot_list, outfile) {
 }
 
 write_csv_bom <- function(df, path) {
-  write.csv(df, path, row.names = FALSE, fileEncoding = "UTF-8-BOM")
+  write.csv(df, path, row.names = FALSE, fileEncoding = "UTF-8")
   message("表格已保存: ", path)
 }
 
