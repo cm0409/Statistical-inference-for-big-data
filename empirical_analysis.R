@@ -1,10 +1,14 @@
 rm(list = ls())
 set.seed(42)
 
-invisible(lapply(
-  c("dplyr", "ggplot2", "arrow", "officer", "rvg", "scales", "viridis"),
-  function(pkg) suppressPackageStartupMessages(library(pkg, character.only = TRUE))
-))
+load_required_packages <- function(pkgs) {
+  missing_pkgs <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]
+  if (length(missing_pkgs) > 0) {
+    stop("缺少必要R包，请先安装：", paste(missing_pkgs, collapse = ", "))
+  }
+  invisible(lapply(pkgs, function(pkg) suppressPackageStartupMessages(library(pkg, character.only = TRUE))))
+}
+load_required_packages(c("dplyr", "ggplot2", "arrow", "officer", "rvg", "scales", "viridis"))
 
 output_dir <- file.path(getwd(), "output")
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
@@ -69,6 +73,7 @@ subsample_results <- lapply(variables, function(var) {
   x <- taxi_clean[[var]]
   true_mean <- mean(x)
   idx_mat <- replicate(n_subsamples, sample.int(n_obs, subsample_size), simplify = "matrix")
+  # 按矩阵索引后重排为 subsample_size × n_subsamples，便于列方向统计
   sampled_mat <- matrix(x[idx_mat], nrow = subsample_size)
   estimates <- colMeans(sampled_mat)
   ses <- apply(sampled_mat, 2, sd) / sqrt(subsample_size)
@@ -149,14 +154,14 @@ n_bootstrap <- 300
 
 Xd_all <- model.matrix(~trip_distance + passenger_count, data = taxi_clean)
 y_all <- taxi_clean$fare_amount
-coef_fast <- function(Xm, yv, idx) lm.fit(Xm[idx, , drop = FALSE], yv[idx])$coefficients
+bootstrap_lm_coef <- function(Xm, yv, idx) lm.fit(Xm[idx, , drop = FALSE], yv[idx])$coefficients
 
 blb_results <- dplyr::bind_rows(lapply(seq_len(n_subsamples), function(i) {
   sub_idx <- sample.int(n_obs, subsample_size)
   X_sub <- Xd_all[sub_idx, , drop = FALSE]
   y_sub <- y_all[sub_idx]
   fit_sub <- lm.fit(X_sub, y_sub)$coefficients
-  boot_coef <- replicate(n_bootstrap, coef_fast(X_sub, y_sub, sample.int(subsample_size, subsample_size, replace = TRUE)))
+  boot_coef <- replicate(n_bootstrap, bootstrap_lm_coef(X_sub, y_sub, sample.int(subsample_size, subsample_size, replace = TRUE)))
   beta_dist <- boot_coef[2, ]
   data.frame(
     subsample_id = i,
@@ -204,23 +209,20 @@ response <- taxi_clean$fare_amount
 X_time <- model.matrix(~trip_distance + passenger_count + tip_amount, data = taxi_clean)
 
 t0 <- Sys.time()
-coef_all <- lm.fit(X_time, response)$coefficients
+lm.fit(X_time, response)$coefficients
 time_all <- as.numeric(Sys.time() - t0, units = "secs")
-invisible(coef_all)
 
 sample_1pct_idx <- sample.int(n_obs, round(n_obs * 0.01))
 t0 <- Sys.time()
-coef_1pct <- lm.fit(X_time[sample_1pct_idx, , drop = FALSE], response[sample_1pct_idx])$coefficients
+lm.fit(X_time[sample_1pct_idx, , drop = FALSE], response[sample_1pct_idx])$coefficients
 time_1pct <- as.numeric(Sys.time() - t0, units = "secs")
-invisible(coef_1pct)
 
 t0 <- Sys.time()
 K <- 10
 split_idx <- split(seq_len(n_obs), sample(rep(seq_len(K), length.out = n_obs)))
 local_coefs <- vapply(split_idx, function(ix) lm.fit(X_time[ix, , drop = FALSE], response[ix])$coefficients, numeric(ncol(X_time)))
-sae_coef <- rowMeans(local_coefs)
+rowMeans(local_coefs)
 time_dist <- as.numeric(Sys.time() - t0, units = "secs")
-invisible(sae_coef)
 
 time_compare <- data.frame(方法 = c("全量OLS", "1%子样本OLS", "模拟分布式SAE"), 计算时间_秒 = round(c(time_all, time_1pct, time_dist), 4), 样本量 = c(n_obs, length(sample_1pct_idx), n_obs))
 
