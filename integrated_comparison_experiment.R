@@ -824,4 +824,3 @@ if (interactive()) {
   message("  run_integrated_comparison(mode = 'quick')")
   message("  run_integrated_comparison(mode = 'full')")
 }
-
