@@ -345,7 +345,8 @@ run_distributed_onestep <- function(df, feature_cols, coef_name, true_mean, true
 }
 
 run_subsample_stratified <- function(df, feature_cols, coef_name, true_mean, true_coef, sample_frac = 0.1, strata_n = 4) {
-  strata <- cut(df[[feature_cols[1]]], breaks = quantile(df[[feature_cols[1]]], probs = seq(0, 1, length.out = strata_n + 1)), include.lowest = TRUE)
+  primary_feature <- df[[feature_cols[1]]]
+  strata <- cut(primary_feature, breaks = quantile(primary_feature, probs = seq(0, 1, length.out = strata_n + 1)), include.lowest = TRUE)
   n_take <- max(200, floor(nrow(df) * sample_frac))
   n_per_stratum <- max(10, floor(n_take / strata_n))
   sample_df <- df |>
@@ -617,7 +618,8 @@ run_track_experiment <- function(track_name, df, feature_cols, coef_name, true_m
   # 综合方案C：分层小批次 -> 聚合
   for (r in seq_len(cfg$reps)) {
     set.seed(seed_base + HYBRID_C_SEED_OFFSET + r)
-    strata <- cut(df[[feature_cols[1]]], breaks = quantile(df[[feature_cols[1]]], probs = seq(0, 1, length.out = 5)), include.lowest = TRUE)
+    primary_feature <- df[[feature_cols[1]]]
+    strata <- cut(primary_feature, breaks = quantile(primary_feature, probs = seq(0, 1, length.out = 5)), include.lowest = TRUE)
     strata_df <- split(df, strata)
     local_beta <- list()
     t0 <- Sys.time()
@@ -684,10 +686,10 @@ plot_pareto <- function(summary_df, out_file) {
 }
 
 plot_coverage_width <- function(summary_df, out_file) {
-  ci_width_denom <- pmax(max(summary_df$mean_ci_width_coef, na.rm = TRUE), MIN_CI_WIDTH_DENOMINATOR)
+  ci_width_normalizer <- pmax(max(summary_df$mean_ci_width_coef, na.rm = TRUE), MIN_CI_WIDTH_DENOMINATOR)
   p <- ggplot2::ggplot(summary_df, ggplot2::aes(x = reorder(paste(method, config_id, sep = "_"), mean_ci_cover_coef), y = mean_ci_cover_coef, fill = category)) +
     ggplot2::geom_col(alpha = 0.85) +
-    ggplot2::geom_point(ggplot2::aes(y = pmin(1, mean_ci_width_coef / ci_width_denom)), color = "black", size = 1.8) +
+    ggplot2::geom_point(ggplot2::aes(y = pmin(1, mean_ci_width_coef / ci_width_normalizer)), color = "black", size = 1.8) +
     ggplot2::coord_flip() +
     ggplot2::facet_wrap(~track) +
     ggplot2::scale_fill_viridis_d(option = "D") +
