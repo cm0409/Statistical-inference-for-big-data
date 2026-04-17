@@ -337,10 +337,11 @@ run_distributed_onestep <- function(df, feature_cols, coef_name, true_mean, true
 run_subsample_stratified <- function(df, feature_cols, coef_name, true_mean, true_coef, sample_frac = 0.1, strata_n = 4) {
   strata <- cut(df[[feature_cols[1]]], breaks = quantile(df[[feature_cols[1]]], probs = seq(0, 1, length.out = strata_n + 1)), include.lowest = TRUE)
   n_take <- max(200, floor(nrow(df) * sample_frac))
+  n_per_stratum <- max(10, floor(n_take / strata_n))
   sample_df <- df |>
     dplyr::mutate(.strata = strata) |>
     dplyr::group_by(.strata) |>
-    dplyr::slice_sample(prop = n_take / nrow(df)) |>
+    dplyr::slice_sample(n = min(n_per_stratum, dplyr::n())) |>
     dplyr::ungroup() |>
     dplyr::select(-.strata)
 
@@ -636,7 +637,8 @@ run_track_experiment <- function(track_name, df, feature_cols, coef_name, true_m
       memory_mb = as.numeric(object.size(beta_mat) / 1024^2),
       mean_estimate = mean(df$y),
       mean_abs_error = abs(mean(df$y) - true_mean),
-      mean_ci_cover = 1,
+      mean_ci_cover = as.numeric(true_mean >= (mean(df$y) - 1.96 * sd(df$y) / sqrt(nrow(df))) &&
+                                   true_mean <= (mean(df$y) + 1.96 * sd(df$y) / sqrt(nrow(df)))),
       mean_ci_width = 2 * 1.96 * sd(df$y) / sqrt(nrow(df)),
       coef_estimate = coef_est,
       coef_abs_error = abs(coef_est - true_coef),

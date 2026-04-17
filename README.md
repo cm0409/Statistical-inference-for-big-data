@@ -4,13 +4,13 @@
 
 ### 主要脚本
 
-- `/home/runner/work/Statistical-inference-for-big-data/Statistical-inference-for-big-data/bigdata_experiment_complete.R`
+- `bigdata_experiment_complete.R`
   综合实验主脚本（SAE/One-step、BLB、SGD、图表与表格）
-- `/home/runner/work/Statistical-inference-for-big-data/Statistical-inference-for-big-data/simulation.R`
+- `simulation.R`
   数值模拟实验脚本
-- `/home/runner/work/Statistical-inference-for-big-data/Statistical-inference-for-big-data/empirical_analysis.R`
+- `empirical_analysis.R`
   NYC Taxi 实证分析脚本
-- `/home/runner/work/Statistical-inference-for-big-data/Statistical-inference-for-big-data/integrated_comparison_experiment.R`
+- `integrated_comparison_experiment.R`
   **统一横向对比与综合使用实验脚本（新增）**
 
 ### 新增统一对比实验说明
@@ -41,7 +41,7 @@
 在 R 环境中执行：
 
 ```r
-source("/home/runner/work/Statistical-inference-for-big-data/Statistical-inference-for-big-data/integrated_comparison_experiment.R")
+source("integrated_comparison_experiment.R")
 run_integrated_comparison(mode = "quick")
 ```
 
@@ -53,4 +53,4 @@ run_integrated_comparison(mode = "full")
 
 默认输出目录：
 
-`/home/runner/work/Statistical-inference-for-big-data/Statistical-inference-for-big-data/output/unified_comparison`
+`output/unified_comparison`
