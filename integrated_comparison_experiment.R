@@ -55,6 +55,7 @@ MAX_CONVERGENCE_POINTS <- 180
 HYBRID_A_SEED_OFFSET <- 700
 HYBRID_B_SEED_OFFSET <- 900
 HYBRID_C_SEED_OFFSET <- 1100
+EPSILON_DENOMINATOR <- 1e-8
 
 summarize_method_results <- function(results_df) {
   results_df |>
@@ -628,6 +629,8 @@ run_track_experiment <- function(track_name, df, feature_cols, coef_name, true_m
     coef_est <- beta_avg[coef_name]
     coef_sd <- sd(beta_mat[, coef_name, drop = TRUE])
     coef_ci <- c(coef_est - 1.96 * coef_sd, coef_est + 1.96 * coef_sd)
+    mean_se <- sd(df$y) / sqrt(nrow(df))
+    mean_ci <- c(mean(df$y) - 1.96 * mean_se, mean(df$y) + 1.96 * mean_se)
 
     rows[[length(rows) + 1]] <- data.frame(
       track = track_name,
@@ -640,9 +643,8 @@ run_track_experiment <- function(track_name, df, feature_cols, coef_name, true_m
       memory_mb = as.numeric(object.size(beta_mat) / 1024^2),
       mean_estimate = mean(df$y),
       mean_abs_error = abs(mean(df$y) - true_mean),
-      mean_ci_cover = as.numeric(true_mean >= (mean(df$y) - 1.96 * sd(df$y) / sqrt(nrow(df))) &&
-                                   true_mean <= (mean(df$y) + 1.96 * sd(df$y) / sqrt(nrow(df)))),
-      mean_ci_width = 2 * 1.96 * sd(df$y) / sqrt(nrow(df)),
+      mean_ci_cover = as.numeric(true_mean >= mean_ci[1] && true_mean <= mean_ci[2]),
+      mean_ci_width = diff(mean_ci),
       coef_estimate = coef_est,
       coef_abs_error = abs(coef_est - true_coef),
       coef_ci_cover = as.numeric(true_coef >= coef_ci[1] && true_coef <= coef_ci[2]),
@@ -677,9 +679,10 @@ plot_pareto <- function(summary_df, out_file) {
 }
 
 plot_coverage_width <- function(summary_df, out_file) {
+  ci_width_denom <- pmax(max(summary_df$mean_ci_width_coef, na.rm = TRUE), 1e-10)
   p <- ggplot2::ggplot(summary_df, ggplot2::aes(x = reorder(paste(method, config_id, sep = "_"), mean_ci_cover_coef), y = mean_ci_cover_coef, fill = category)) +
     ggplot2::geom_col(alpha = 0.85) +
-    ggplot2::geom_point(ggplot2::aes(y = pmin(1, mean_ci_width_coef / max(mean_ci_width_coef, na.rm = TRUE))), color = "black", size = 1.8) +
+    ggplot2::geom_point(ggplot2::aes(y = pmin(1, mean_ci_width_coef / ci_width_denom)), color = "black", size = 1.8) +
     ggplot2::coord_flip() +
     ggplot2::facet_wrap(~track) +
     ggplot2::scale_fill_viridis_d(option = "D") +
@@ -794,8 +797,8 @@ run_integrated_comparison <- function(
     dplyr::filter(category == "Hybrid") |>
     dplyr::left_join(reference, by = "track") |>
     dplyr::mutate(
-      error_gain_pct = (ref_error - mean_abs_error_coef) / pmax(ref_error, 1e-8) * 100,
-      runtime_gain_pct = (ref_runtime - mean_runtime_sec) / pmax(ref_runtime, 1e-8) * 100,
+      error_gain_pct = (ref_error - mean_abs_error_coef) / pmax(ref_error, EPSILON_DENOMINATOR) * 100,
+      runtime_gain_pct = (ref_runtime - mean_runtime_sec) / pmax(ref_runtime, EPSILON_DENOMINATOR) * 100,
       cover_gain = mean_ci_cover_coef - ref_ci_cover
     ) |>
     dplyr::select(track, method, config_id, error_gain_pct, runtime_gain_pct, cover_gain, ref_method, ref_config)
