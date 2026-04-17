@@ -3,7 +3,6 @@
 # ============================================================================
 # 数据集：data/yellow_tripdata_2023-01.parquet（约300万行）
 # 方法：简单随机子抽样、分层子抽样、BLB回归推断、大数据回归对比
-# 图表：横纵坐标中文，汇总导出为可编辑 PPTX
 # ============================================================================
 
 rm(list = ls())
@@ -32,18 +31,32 @@ if (.Platform$OS.type == "windows") {
 }
 
 theme_cn <- function(base_size = 12) {
-  theme_minimal(base_size = base_size, base_family = font_family) +
+  theme_bw(base_size = base_size, base_family = font_family) +
     theme(
-      text = element_text(family = font_family),
-      plot.title = element_text(family = font_family, face = "bold"),
-      plot.subtitle = element_text(family = font_family),
-      axis.title = element_text(family = font_family),
-      axis.text = element_text(family = font_family),
-      legend.title = element_text(family = font_family),
-      legend.text = element_text(family = font_family),
-      strip.text = element_text(family = font_family)
+      panel.grid.major = element_line(color = "#E5E5E5", linewidth = 0.3),
+      panel.grid.minor = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "#333333", linewidth = 0.4),
+      text = element_text(family = font_family, color = "#333333"),
+      plot.title = element_text(family = font_family, face = "bold", color = "#1A1A1A", size = base_size + 2),
+      plot.subtitle = element_text(family = font_family, color = "#555555", size = base_size),
+      axis.title = element_text(family = font_family, color = "#333333"),
+      axis.text = element_text(family = font_family, color = "#444444"),
+      legend.title = element_text(family = font_family, color = "#333333"),
+      legend.text = element_text(family = font_family, color = "#444444"),
+      strip.text = element_text(family = font_family, face = "bold", color = "#1A1A1A"),
+      strip.background = element_rect(fill = "#F5F5F5", color = NA)
     )
 }
+
+# 统一商务配色：与项目中 plot_figures.R 保持一致的高级 Office 色系，
+# 在 PPT 中显示效果最佳，色彩明快且辨识度高
+palette_var <- c(
+  "fare_amount" = "#4472C4", "tip_amount" = "#ED7D31", "trip_distance" = "#70AD47"
+)
+palette_payment <- c("信用卡" = "#4472C4", "现金" = "#ED7D31")
+palette_coef <- c("截距" = "#4472C4", "行程距离" = "#ED7D31", "乘客数" = "#70AD47")
+palette_method <- c("全量OLS" = "#4472C4", "1%子样本OLS" = "#ED7D31", "模拟分布式SAE" = "#70AD47")
 
 plot_list <- list()
 
@@ -144,8 +157,8 @@ print(subsample_summary)
 # 图1：车费均值的子抽样估计及置信区间
 fare_res <- subsample_results[["fare_amount"]]
 p1 <- ggplot(fare_res, aes(x = factor(rep_id), y = estimate)) +
-  geom_point(color = "steelblue", size = 2) +
-  geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), width = 0.3, alpha = 0.5) +
+  geom_point(color = "#4472C4", size = 2, alpha = 0.8) +
+  geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), width = 0.3, alpha = 0.4, linewidth = 0.4) +
   geom_hline(yintercept = subsample_summary$真实均值[subsample_summary$变量 == "fare_amount"],
              color = "red", linetype = "dashed", linewidth = 1) +
   labs(
@@ -175,12 +188,12 @@ var_labels <- c(
 )
 
 p2 <- ggplot(plot_density, aes(x = Estimate, fill = Variable)) +
-  geom_density(alpha = 0.6) +
+  geom_density(alpha = 0.75, color = "white", linewidth = 0.4) +
   facet_wrap(~ Variable, scales = "free", labeller = labeller(Variable = var_labels)) +
   labs(title = "简单随机子抽样的估计量分布", x = "估计值", y = "密度") +
   theme_cn(base_size = 12) +
   theme(legend.position = "none") +
-  scale_fill_viridis_d(labels = var_labels)
+  scale_fill_manual(values = palette_var, labels = var_labels)
 plot_list[["图2_子抽样估计分布"]] <- p2
 
 # ----------------------------------------------------------------------------
@@ -221,10 +234,11 @@ print(strat_summary)
 
 # 图3：分层小费分布
 p3 <- ggplot(strat_results, aes(x = payment_type, y = mean_tip, fill = payment_type)) +
-  geom_boxplot(alpha = 0.7) +
+  geom_boxplot(alpha = 0.85, color = "#333333", linewidth = 0.4, outlier.shape = NA) +
+  geom_jitter(width = 0.15, alpha = 0.15, size = 0.8, color = "#333333") +
   geom_point(data = true_by_payment, aes(y = true_mean),
-             color = "red", size = 4, shape = 18) +
-  scale_fill_brewer(palette = "Set2") +
+             color = "#C44E52", size = 4, shape = 18) +
+  scale_fill_manual(values = palette_payment) +
   labs(
     title = "按支付方式分层的小费子抽样分布",
     subtitle = "红色菱形为全数据真实均值",
@@ -290,9 +304,9 @@ print(blb_summary)
 
 # 图4：行程距离系数的 BLB 估计
 p4 <- ggplot(blb_results, aes(x = factor(subsample_id), y = beta_distance)) +
-  geom_point(color = "steelblue", size = 2.5) +
+  geom_point(color = "#4472C4", size = 2.5, alpha = 0.8) +
   geom_errorbar(aes(ymin = ci_lower_distance, ymax = ci_upper_distance),
-                width = 0.3, alpha = 0.6) +
+                width = 0.3, alpha = 0.4, linewidth = 0.4) +
   geom_hline(yintercept = coef(full_model)[2], color = "red", linetype = "dashed", linewidth = 1) +
   labs(
     title = "行程距离系数的 BLB 估计",
@@ -316,13 +330,13 @@ true_vals <- data.frame(
 )
 
 p5 <- ggplot(blb_coef_long, aes(x = 参数, y = 估计值, fill = 参数)) +
-  geom_violin(alpha = 0.7, trim = FALSE) +
-  geom_boxplot(width = 0.15, alpha = 0.8) +
-  geom_point(data = true_vals, aes(y = 真实值), color = "red", size = 4, shape = 18, inherit.aes = TRUE) +
+  geom_violin(alpha = 0.8, color = "white", linewidth = 0.3, trim = FALSE) +
+  geom_boxplot(width = 0.15, alpha = 0.9, color = "#333333", linewidth = 0.3, outlier.shape = NA) +
+  geom_point(data = true_vals, aes(y = 真实值), color = "#C44E52", size = 4, shape = 18, inherit.aes = TRUE) +
   labs(title = "BLB 回归系数的分布", subtitle = "红色菱形为全数据估计值", x = "参数", y = "估计值") +
   theme_cn(base_size = 12) +
   theme(legend.position = "none") +
-  scale_fill_viridis_d()
+  scale_fill_manual(values = palette_coef)
 plot_list[["图5_BLB系数分布"]] <- p5
 
 # ----------------------------------------------------------------------------
@@ -366,12 +380,13 @@ print(time_compare)
 
 # 图6：计算时间对比柱状图
 p6 <- ggplot(time_compare, aes(x = 方法, y = 计算时间_秒, fill = 方法)) +
-  geom_bar(stat = "identity", width = 0.6) +
+  geom_bar(stat = "identity", width = 0.6, color = "white", linewidth = 0.3) +
   geom_text(aes(label = sprintf("%.3f s", 计算时间_秒)), vjust = -0.5, size = 4, family = font_family) +
   labs(title = "大数据回归计算时间对比", x = "方法", y = "计算时间（秒）") +
   theme_cn(base_size = 12) +
   theme(legend.position = "none") +
-  scale_fill_viridis_d()
+  scale_fill_manual(values = palette_method) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.05)))
 plot_list[["图6_大数据计算时间对比"]] <- p6
 
 # 导出 PPT

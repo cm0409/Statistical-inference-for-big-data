@@ -21,6 +21,14 @@ library(dplyr)
 library(officer)
 library(rvg)
 
+# Windows 中文字体设置
+if (.Platform$OS.type == "windows") {
+  windowsFonts(YaHei = windowsFont("微软雅黑"))
+  font_family <- "YaHei"
+} else {
+  font_family <- "sans"
+}
+
 # 设置输出目录
 output_dir <- "D:\workspace\Statistical-inference-for-big-data\pictures"
 # 设置输出目录

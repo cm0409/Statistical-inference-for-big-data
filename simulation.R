@@ -1,10 +1,6 @@
 # ============================================================================
 # 数值模拟：海量数据统计计算方法
 # ============================================================================
-# 本脚本为顺序执行脚本，不封装函数。
-# 包含：模型比较、分布式计算、BLB子抽样、SGD小批次优化。
-# 所有图表横纵坐标使用中文，并汇总导出为可编辑 PPTX。
-# ============================================================================
 
 rm(list = ls())
 set.seed(42)
@@ -34,18 +30,42 @@ if (.Platform$OS.type == "windows") {
 }
 
 theme_cn <- function(base_size = 12) {
-  theme_minimal(base_size = base_size, base_family = font_family) +
+  theme_bw(base_size = base_size, base_family = font_family) +
     theme(
-      text = element_text(family = font_family),
-      plot.title = element_text(family = font_family, face = "bold"),
-      plot.subtitle = element_text(family = font_family),
-      axis.title = element_text(family = font_family),
-      axis.text = element_text(family = font_family),
-      legend.title = element_text(family = font_family),
-      legend.text = element_text(family = font_family),
-      strip.text = element_text(family = font_family)
+      panel.grid.major = element_line(color = "#E5E5E5", linewidth = 0.3),
+      panel.grid.minor = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "#333333", linewidth = 0.4),
+      text = element_text(family = font_family, color = "#333333"),
+      plot.title = element_text(family = font_family, face = "bold", color = "#1A1A1A", size = base_size + 2),
+      plot.subtitle = element_text(family = font_family, color = "#555555", size = base_size),
+      axis.title = element_text(family = font_family, color = "#333333"),
+      axis.text = element_text(family = font_family, color = "#444444"),
+      legend.title = element_text(family = font_family, color = "#333333"),
+      legend.text = element_text(family = font_family, color = "#444444"),
+      strip.text = element_text(family = font_family, face = "bold", color = "#1A1A1A"),
+      strip.background = element_rect(fill = "#F5F5F5", color = NA)
     )
 }
+
+# 统一商务配色：与项目中 plot_figures.R 保持一致的高级 Office 色系，
+# 在 PPT 中显示效果最佳，色彩明快且辨识度高
+palette_main <- c(
+  OLS = "#4472C4", Polynomial = "#ED7D31", Ridge = "#70AD47",
+  GAM = "#FFC000", Kernel = "#5B9BD5", Partial_Linear = "#A5A5A5"
+)
+palette_blb <- c(
+  "γ=0.6, s=5" = "#305496", "γ=0.6, s=10" = "#4472C4", "γ=0.6, s=20" = "#8EAADB",
+  "γ=0.7, s=5" = "#C55A11", "γ=0.7, s=10" = "#ED7D31", "γ=0.7, s=20" = "#F4B183",
+  "全数据Bootstrap" = "#A5A5A5"
+)
+palette_batch <- c(
+  "32" = "#4472C4", "64" = "#70AD47", "128" = "#ED7D31",
+  "256" = "#FFC000", "512" = "#5B9BD5"
+)
+palette_dist <- c(
+  "SAE" = "#4472C4", "One-step" = "#ED7D31", "Ideal" = "#A5A5A5"
+)
 
 # PPT 导出辅助：将多张 ggplot 汇总到一个可编辑 pptx
 plot_list <- list()
@@ -399,56 +419,79 @@ model_labels <- c(
 )
 
 p1 <- ggplot(plot_compute, aes(x = SampleSize, y = Time, fill = Model)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  scale_y_log10() +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8),
+           width = 0.7, color = "white", linewidth = 0.3) +
+  scale_y_log10(expand = expansion(mult = c(0, 0.05))) +
   labs(x = "样本量", y = "计算时间（秒，对数坐标）", fill = "模型") +
   theme_cn(base_size = 12) +
   theme(axis.text.x = element_text(angle = 0), legend.position = "bottom") +
-  scale_fill_viridis_d(labels = model_labels)
+  scale_fill_manual(values = palette_main, labels = model_labels)
 plot_list[["图1_计算时间对比"]] <- p1
 
-# 图2：模型 MSE 对比（最大样本量）
-res_large <- all_results[[as.character(n_large)]]
+# 图2：模型 MSE 对比（使用已完成结果中的最大样本量）
+available_sizes <- suppressWarnings(as.numeric(names(all_results)))
+available_sizes <- available_sizes[!is.na(available_sizes)]
+
+if (length(available_sizes) == 0) {
+  stop("all_results 为空，无法生成 MSE 对比图。")
+}
+
+target_size <- max(available_sizes)
+res_large <- all_results[[as.character(target_size)]]
+
 plot_mse <- data.frame()
 for (model in names(res_large)) {
-  plot_mse <- rbind(plot_mse, data.frame(
-    Model = model, MSE = res_large[[model]]$mse
-  ))
+  mse_val <- res_large[[model]]$mse
+  if (!is.null(mse_val) && length(mse_val) == 1 && is.numeric(mse_val) && !is.na(mse_val)) {
+    plot_mse <- rbind(
+      plot_mse,
+      data.frame(Model = model, MSE = as.numeric(mse_val))
+    )
+  }
 }
-plot_mse$Model <- factor(plot_mse$Model, levels = plot_mse$Model[order(plot_mse$MSE)])
+
+if (nrow(plot_mse) == 0) {
+  stop("没有可用的 MSE 数据，无法生成图2。")
+}
+
+plot_mse <- plot_mse[order(plot_mse$MSE), , drop = FALSE]
+plot_mse$Model <- factor(plot_mse$Model, levels = plot_mse$Model)
 
 p2 <- ggplot(plot_mse, aes(x = Model, y = MSE, fill = Model)) +
-  geom_bar(stat = "identity") +
+  geom_bar(stat = "identity", width = 0.7, color = "white", linewidth = 0.3) +
   geom_text(aes(label = sprintf("%.4f", MSE)), vjust = -0.5, size = 3.5, family = font_family) +
   labs(x = "模型", y = "均方误差（MSE）") +
   theme_cn(base_size = 12) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "none") +
-  scale_fill_viridis_d(labels = model_labels) +
-  scale_x_discrete(labels = model_labels)
+  theme(legend.position = "none", axis.text.x = element_text(angle = 30, hjust = 1)) +
+  scale_fill_manual(values = palette_main, labels = model_labels) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.05)))
 plot_list[["图2_MSE对比"]] <- p2
 
 # 图3：分布式计算加速比
 p3 <- ggplot(dist_df, aes(x = K, y = Speedup, color = Method, linetype = Method)) +
   geom_line(linewidth = 1.2) +
-  geom_point(size = 3) +
+  geom_point(aes(fill = Method), size = 3.5, shape = 21, color = "white", stroke = 0.8) +
   geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "gray50", alpha = 0.7) +
   labs(x = "节点数量 K", y = "加速比", color = "方法", linetype = "方法") +
   theme_cn(base_size = 12) +
   theme(legend.position = "bottom") +
-  scale_color_viridis_d() +
+  scale_color_manual(values = palette_dist) +
+  scale_fill_manual(values = palette_dist, guide = "none") +
   scale_x_continuous(breaks = K_values)
 plot_list[["图3_加速比曲线"]] <- p3
 
 # 图4：BLB 覆盖率
 p4 <- ggplot(blb_df, aes(x = Method, y = Coverage, fill = Method)) +
-  geom_bar(stat = "identity") +
-  geom_hline(yintercept = 0.95, linetype = "dashed", color = "red", linewidth = 1) +
-  geom_text(aes(label = sprintf("%.2f%%", Coverage * 100)), vjust = -0.5, size = 3.5, family = font_family) +
+  geom_bar(stat = "identity", width = 0.7, color = "white", linewidth = 0.3) +
+  geom_hline(yintercept = 0.95, linetype = "dashed", color = "#C44E52", linewidth = 0.8) +
+  geom_text(aes(label = sprintf("%.2f%%", Coverage * 100)), hjust = -0.15, size = 3.2, family = font_family) +
   labs(x = "方法", y = "覆盖率") +
   theme_cn(base_size = 12) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "none") +
-  scale_fill_viridis_d() +
-  scale_y_continuous(labels = percent, limits = c(0, 1))
+  theme(legend.position = "none") +
+  scale_fill_manual(values = palette_blb) +
+  scale_x_discrete(limits = rev(levels(factor(blb_df$Method)))) +
+  scale_y_continuous(labels = percent, limits = c(0, 1.05), expand = c(0, 0)) +
+  coord_flip()
 plot_list[["图4_BLB覆盖率"]] <- p4
 
 # 图5：SGD 收敛曲线
@@ -457,7 +500,7 @@ p5 <- ggplot(sgd_loss_df, aes(x = Iteration, y = Loss, color = BatchSize)) +
   labs(x = "迭代次数", y = "损失值（MSE，对数坐标）", color = "批大小") +
   theme_cn(base_size = 12) +
   theme(legend.position = "right") +
-  scale_color_viridis_d() +
+  scale_color_manual(values = palette_batch) +
   scale_y_log10()
 plot_list[["图5_SGD收敛曲线"]] <- p5
 
@@ -473,13 +516,13 @@ for (model in names(res_large)) {
 }
 
 p6 <- ggplot(plot_complex, aes(x = Complexity, y = MSE, size = Time, color = Model)) +
-  geom_point(alpha = 0.7) +
-  geom_text(aes(label = model_labels[Model]), vjust = -1, size = 3.5, family = font_family) +
+  geom_point(alpha = 0.85, stroke = 0.8) +
+  geom_text(aes(label = model_labels[Model]), vjust = -1.2, size = 3.5, family = font_family) +
   labs(x = "模型复杂度评分", y = "均方误差（MSE）",
        size = "计算时间（秒）", color = "模型") +
   theme_cn(base_size = 12) +
   theme(legend.position = "right") +
-  scale_color_viridis_d(labels = model_labels) +
+  scale_color_manual(values = palette_main, labels = model_labels) +
   scale_size_continuous(range = c(3, 15))
 plot_list[["图6_复杂度精度权衡"]] <- p6
 
