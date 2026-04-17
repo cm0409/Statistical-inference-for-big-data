@@ -51,6 +51,10 @@ build_design <- function(df, feature_cols) {
 }
 
 clip01 <- function(x) pmin(1, pmax(0, x))
+MAX_CONVERGENCE_POINTS <- 180
+HYBRID_A_SEED_OFFSET <- 700
+HYBRID_B_SEED_OFFSET <- 900
+HYBRID_C_SEED_OFFSET <- 1100
 
 summarize_method_results <- function(results_df) {
   results_df |>
@@ -395,8 +399,7 @@ run_blb <- function(df, feature_cols, coef_name, true_mean, true_coef, gamma = 0
     mse = mean((df$y - pred)^2),
     r2 = 1 - sum((df$y - pred)^2) / sum((df$y - mean(df$y))^2),
     sample_accesses = s * B * m,
-    memory_mb = as.numeric(object.size(coef_store) / 1024^2),
-    beta_init = c("(Intercept)" = coef(formula_fit)[1], setNames(rep(0, length(feature_cols)), feature_cols))
+    memory_mb = as.numeric(object.size(coef_store) / 1024^2)
   )
 }
 
@@ -527,7 +530,7 @@ run_track_experiment <- function(track_name, df, feature_cols, coef_name, true_m
       )
 
       if (!is.null(res$loss_history)) {
-        keep <- round(seq(1, length(res$loss_history), length.out = min(180, length(res$loss_history))))
+        keep <- round(seq(1, length(res$loss_history), length.out = min(MAX_CONVERGENCE_POINTS, length(res$loss_history))))
         convergence_rows[[length(convergence_rows) + 1]] <- data.frame(
           track = track_name,
           method = paste0(mtd$method, "_", mtd$config_id),
@@ -541,7 +544,7 @@ run_track_experiment <- function(track_name, df, feature_cols, coef_name, true_m
 
   # 综合方案A：BLB -> One-step
   for (r in seq_len(cfg$reps)) {
-    set.seed(seed_base + 700 + r)
+    set.seed(seed_base + HYBRID_A_SEED_OFFSET + r)
     blb_res <- run_blb(df, feature_cols, coef_name, true_mean, true_coef, gamma = cfg$blb_gamma, s = cfg$blb_s, B = cfg$blb_B)
     beta_seed <- c("(Intercept)" = mean(df$y), setNames(rep(0, length(feature_cols)), feature_cols))
     beta_seed[coef_name] <- blb_res$coef_estimate
@@ -571,7 +574,7 @@ run_track_experiment <- function(track_name, df, feature_cols, coef_name, true_m
 
   # 综合方案B：One-step 初始化 -> SGD 在线更新
   for (r in seq_len(cfg$reps)) {
-    set.seed(seed_base + 900 + r)
+    set.seed(seed_base + HYBRID_B_SEED_OFFSET + r)
     one_res <- run_distributed_onestep(df, feature_cols, coef_name, true_mean, true_coef, K = 10, pilot_n = cfg$pilot_n)
     sgd_res <- run_sgd(df, feature_cols, coef_name, true_mean, true_coef, batch_size = 128, epochs = cfg$hybrid_sgd_epochs, lr = 0.008, beta_init = one_res$beta)
 
@@ -596,7 +599,7 @@ run_track_experiment <- function(track_name, df, feature_cols, coef_name, true_m
       r2 = sgd_res$r2
     )
 
-    keep <- round(seq(1, length(sgd_res$loss_history), length.out = min(180, length(sgd_res$loss_history))))
+    keep <- round(seq(1, length(sgd_res$loss_history), length.out = min(MAX_CONVERGENCE_POINTS, length(sgd_res$loss_history))))
     convergence_rows[[length(convergence_rows) + 1]] <- data.frame(
       track = track_name,
       method = "Hybrid_One-step->SGD",
@@ -607,24 +610,24 @@ run_track_experiment <- function(track_name, df, feature_cols, coef_name, true_m
 
   # 综合方案C：分层小批次 -> 聚合
   for (r in seq_len(cfg$reps)) {
-    set.seed(seed_base + 1100 + r)
+    set.seed(seed_base + HYBRID_C_SEED_OFFSET + r)
     strata <- cut(df[[feature_cols[1]]], breaks = quantile(df[[feature_cols[1]]], probs = seq(0, 1, length.out = 5)), include.lowest = TRUE)
     strata_df <- split(df, strata)
     local_beta <- list()
     t0 <- Sys.time()
-    local_runtime <- 0
     for (sdf in strata_df) {
       sgd_local <- run_sgd(sdf, feature_cols, coef_name, true_mean, true_coef, batch_size = 64, epochs = max(8, floor(cfg$sgd_epochs / 2)), lr = 0.01)
       local_beta[[length(local_beta) + 1]] <- sgd_local$beta
-      local_runtime <- local_runtime + sgd_local$runtime_sec
     }
     beta_mat <- do.call(rbind, local_beta)
     beta_avg <- colMeans(beta_mat)
-    runtime <- as.numeric(Sys.time() - t0, units = "secs") + local_runtime
+    runtime <- as.numeric(Sys.time() - t0, units = "secs")
 
     Xd <- build_design(df, feature_cols)
     pred <- as.vector(Xd %*% beta_avg[c("(Intercept)", feature_cols)])
     coef_est <- beta_avg[coef_name]
+    coef_sd <- sd(beta_mat[, coef_name, drop = TRUE])
+    coef_ci <- c(coef_est - 1.96 * coef_sd, coef_est + 1.96 * coef_sd)
 
     rows[[length(rows) + 1]] <- data.frame(
       track = track_name,
@@ -642,8 +645,8 @@ run_track_experiment <- function(track_name, df, feature_cols, coef_name, true_m
       mean_ci_width = 2 * 1.96 * sd(df$y) / sqrt(nrow(df)),
       coef_estimate = coef_est,
       coef_abs_error = abs(coef_est - true_coef),
-      coef_ci_cover = as.numeric(abs(coef_est - true_coef) < sd(beta_mat[, coef_name, drop = TRUE]) * 1.96),
-      coef_ci_width = 2 * 1.96 * sd(beta_mat[, coef_name, drop = TRUE]),
+      coef_ci_cover = as.numeric(true_coef >= coef_ci[1] && true_coef <= coef_ci[2]),
+      coef_ci_width = diff(coef_ci),
       mse = mean((df$y - pred)^2),
       r2 = 1 - sum((df$y - pred)^2) / sum((df$y - mean(df$y))^2)
     )
