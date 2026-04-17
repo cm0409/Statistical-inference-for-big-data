@@ -79,16 +79,19 @@ write_csv_bom <- function(df, path) {
 
 detected_cores <- parallel::detectCores(logical = FALSE)
 n_cores <- if (is.na(detected_cores)) 1L else max(1L, detected_cores - 1L)
-map_reps <- function(X, FUN, ...) {
-  if (.Platform$OS.type == "unix" && n_cores > 1L) {
-    parallel::mclapply(X, FUN, ..., mc.cores = n_cores)
+map_reps <- function(X, FUN, ..., cores = n_cores) {
+  if (.Platform$OS.type == "unix" && cores > 1L) {
+    parallel::mclapply(X, FUN, ..., mc.cores = cores)
   } else {
     lapply(X, FUN, ...)
   }
 }
 
 replace_na_coef <- function(b) {
-  if (anyNA(b)) warning("检测到不可估系数，已用 0 填充。")
+  if (anyNA(b)) {
+    na_id <- which(is.na(b))
+    warning(sprintf("检测到不可估系数位置 %s，已用 0 填充。", paste(na_id, collapse = ",")))
+  }
   b[is.na(b)] <- 0
   b
 }
@@ -216,7 +219,8 @@ dist_rows <- lapply(K_values, function(K) {
     EstBiasL2 = c(sqrt(sum((sae_est - base_coef)^2)), sqrt(sum((onestep_est - base_coef)^2)))
   )
 })
-dist_df <- bind_rows(dist_rows, data.frame(K = K_values, Method = "Ideal", Time = base_time / K_values, Speedup = K_values, EstBiasL2 = NA_real_))
+ideal_dist <- data.frame(K = K_values, Method = "Ideal", Time = base_time / K_values, Speedup = K_values, EstBiasL2 = NA_real_)
+dist_df <- bind_rows(dist_rows, ideal_dist)
 
 # ----------------------------------------------------------------------------
 # 实验3：BLB 子抽样
@@ -235,7 +239,7 @@ s_values <- c(5, 10, 20)
 # 基准：全数据 bootstrap
 B_full <- 500
 full_boot <- replicate(B_full, {
-  w <- as.numeric(rmultinom(1, size = n, prob = rep.int(1 / n, n)))
+  w <- tabulate(sample.int(n, n, replace = TRUE), nbins = n)
   fast_wls_coef(X_design, y, w)
 })
 full_boot <- t(full_boot)
@@ -254,7 +258,7 @@ for (gamma in gamma_values) {
       X_sub <- X_design[sub_idx, , drop = FALSE]
       y_sub <- y[sub_idx]
       boot_coef <- replicate(B, {
-        w <- as.numeric(rmultinom(1, size = m, prob = rep.int(1 / m, m)))
+        w <- tabulate(sample.int(m, m, replace = TRUE), nbins = m)
         fast_wls_coef(X_sub, y_sub, w)
       })
       boot_coef <- t(boot_coef)

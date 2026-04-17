@@ -69,16 +69,19 @@ write_csv_bom <- function(df, path) {
 
 detected_cores <- parallel::detectCores(logical = FALSE)
 n_cores <- if (is.na(detected_cores)) 1L else max(1L, detected_cores - 1L)
-map_reps <- function(X, FUN, ...) {
-  if (.Platform$OS.type == "unix" && n_cores > 1L) {
-    parallel::mclapply(X, FUN, ..., mc.cores = n_cores)
+map_reps <- function(X, FUN, ..., cores = n_cores) {
+  if (.Platform$OS.type == "unix" && cores > 1L) {
+    parallel::mclapply(X, FUN, ..., mc.cores = cores)
   } else {
     lapply(X, FUN, ...)
   }
 }
 
 replace_na_coef <- function(b) {
-  if (anyNA(b)) warning("检测到不可估系数，已用 0 填充。")
+  if (anyNA(b)) {
+    na_id <- which(is.na(b))
+    warning(sprintf("检测到不可估系数位置 %s，已用 0 填充。", paste(na_id, collapse = ",")))
+  }
   b[is.na(b)] <- 0
   b
 }
@@ -240,7 +243,7 @@ blb_list <- map_reps(seq_len(n_sub), function(i) {
 
   coef_sub <- fast_lm_coef(X_sub, y_sub)
   boot_coef <- replicate(n_boot, {
-    w <- as.numeric(rmultinom(1, size = sub_size, prob = rep.int(1 / sub_size, sub_size)))
+    w <- tabulate(sample.int(sub_size, sub_size, replace = TRUE), nbins = sub_size)
     fast_wls_coef(X_sub, y_sub, w)
   })
   boot_coef <- t(boot_coef)
