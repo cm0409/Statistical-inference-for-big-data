@@ -11,7 +11,7 @@
 - `empirical_analysis.R`
   NYC Taxi 实证分析脚本
 - `integrated_comparison_experiment.R`
-  **统一横向对比与综合使用实验脚本（新增）**
+  统一横向对比与综合使用实验脚本
 
 ### 新增统一对比实验说明
 

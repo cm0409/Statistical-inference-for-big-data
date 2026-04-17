@@ -56,6 +56,11 @@ HYBRID_A_SEED_OFFSET <- 700
 HYBRID_B_SEED_OFFSET <- 900
 HYBRID_C_SEED_OFFSET <- 1100
 EPSILON_DENOMINATOR <- 1e-8
+MIN_CI_WIDTH_DENOMINATOR <- 1e-10
+
+downsample_history <- function(history_vec, max_points = MAX_CONVERGENCE_POINTS) {
+  round(seq(1, length(history_vec), length.out = min(max_points, length(history_vec))))
+}
 
 summarize_method_results <- function(results_df) {
   results_df |>
@@ -531,7 +536,7 @@ run_track_experiment <- function(track_name, df, feature_cols, coef_name, true_m
       )
 
       if (!is.null(res$loss_history)) {
-        keep <- round(seq(1, length(res$loss_history), length.out = min(MAX_CONVERGENCE_POINTS, length(res$loss_history))))
+        keep <- downsample_history(res$loss_history)
         convergence_rows[[length(convergence_rows) + 1]] <- data.frame(
           track = track_name,
           method = paste0(mtd$method, "_", mtd$config_id),
@@ -600,7 +605,7 @@ run_track_experiment <- function(track_name, df, feature_cols, coef_name, true_m
       r2 = sgd_res$r2
     )
 
-    keep <- round(seq(1, length(sgd_res$loss_history), length.out = min(MAX_CONVERGENCE_POINTS, length(sgd_res$loss_history))))
+    keep <- downsample_history(sgd_res$loss_history)
     convergence_rows[[length(convergence_rows) + 1]] <- data.frame(
       track = track_name,
       method = "Hybrid_One-step->SGD",
@@ -679,7 +684,7 @@ plot_pareto <- function(summary_df, out_file) {
 }
 
 plot_coverage_width <- function(summary_df, out_file) {
-  ci_width_denom <- pmax(max(summary_df$mean_ci_width_coef, na.rm = TRUE), 1e-10)
+  ci_width_denom <- pmax(max(summary_df$mean_ci_width_coef, na.rm = TRUE), MIN_CI_WIDTH_DENOMINATOR)
   p <- ggplot2::ggplot(summary_df, ggplot2::aes(x = reorder(paste(method, config_id, sep = "_"), mean_ci_cover_coef), y = mean_ci_cover_coef, fill = category)) +
     ggplot2::geom_col(alpha = 0.85) +
     ggplot2::geom_point(ggplot2::aes(y = pmin(1, mean_ci_width_coef / ci_width_denom)), color = "black", size = 1.8) +
