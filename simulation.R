@@ -1,580 +1,342 @@
-# ============================================================================
-# 数值模拟：海量数据统计计算方法
-# ============================================================================
-
 rm(list = ls())
 set.seed(42)
 
-# ----------------------------------------------------------------------------
-# 1. 包依赖与初始化
-# ----------------------------------------------------------------------------
-packages <- c("MASS", "glmnet", "mgcv", "np", "ggplot2", "dplyr", "tidyr",
-              "reshape2", "scales", "viridis", "microbenchmark",
-              "officer", "rvg", "svglite")
-for (pkg in packages) {
-  if (!require(pkg, character.only = TRUE, quietly = TRUE)) {
-    install.packages(pkg, repos = "https://cloud.r-project.org/")
-    library(pkg, character.only = TRUE)
-  }
-}
+invisible(lapply(
+  c("MASS", "glmnet", "mgcv", "np", "ggplot2", "dplyr", "tidyr", "scales", "officer", "rvg"),
+  function(pkg) suppressPackageStartupMessages(library(pkg, character.only = TRUE))
+))
 
 output_dir <- file.path(getwd(), "output")
-if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
+dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
-# Windows 中文字体设置（避免乱码）
-if (.Platform$OS.type == "windows") {
-  windowsFonts(YaHei = windowsFont("微软雅黑"))
-  font_family <- "YaHei"
-} else {
-  font_family <- "sans"
-}
+font_family <- if (.Platform$OS.type == "windows") {
+  windowsFonts(YaHei = windowsFont("微软雅黑")); "YaHei"
+} else "sans"
 
 theme_cn <- function(base_size = 12) {
   theme_bw(base_size = base_size, base_family = font_family) +
     theme(
       panel.grid.major = element_line(color = "#E5E5E5", linewidth = 0.3),
-      panel.grid.minor = element_blank(),
-      panel.border = element_blank(),
+      panel.grid.minor = element_blank(), panel.border = element_blank(),
       axis.line = element_line(color = "#333333", linewidth = 0.4),
-      text = element_text(family = font_family, color = "#333333"),
-      plot.title = element_text(family = font_family, face = "bold", color = "#1A1A1A", size = base_size + 2),
-      plot.subtitle = element_text(family = font_family, color = "#555555", size = base_size),
-      axis.title = element_text(family = font_family, color = "#333333"),
-      axis.text = element_text(family = font_family, color = "#444444"),
-      legend.title = element_text(family = font_family, color = "#333333"),
-      legend.text = element_text(family = font_family, color = "#444444"),
-      strip.text = element_text(family = font_family, face = "bold", color = "#1A1A1A"),
+      text = element_text(color = "#333333"),
+      plot.title = element_text(face = "bold", color = "#1A1A1A", size = base_size + 2),
+      plot.subtitle = element_text(color = "#555555", size = base_size),
+      axis.text = element_text(color = "#444444"), legend.text = element_text(color = "#444444"),
+      strip.text = element_text(face = "bold", color = "#1A1A1A"),
       strip.background = element_rect(fill = "#F5F5F5", color = NA)
     )
 }
 
-# 统一商务配色：与项目中 plot_figures.R 保持一致的高级 Office 色系，
-# 在 PPT 中显示效果最佳，色彩明快且辨识度高
-palette_main <- c(
-  OLS = "#4472C4", Polynomial = "#ED7D31", Ridge = "#70AD47",
-  GAM = "#FFC000", Kernel = "#5B9BD5", Partial_Linear = "#A5A5A5"
-)
-palette_blb <- c(
-  "γ=0.6, s=5" = "#305496", "γ=0.6, s=10" = "#4472C4", "γ=0.6, s=20" = "#8EAADB",
-  "γ=0.7, s=5" = "#C55A11", "γ=0.7, s=10" = "#ED7D31", "γ=0.7, s=20" = "#F4B183",
-  "全数据Bootstrap" = "#A5A5A5"
-)
-palette_batch <- c(
-  "32" = "#4472C4", "64" = "#70AD47", "128" = "#ED7D31",
-  "256" = "#FFC000", "512" = "#5B9BD5"
-)
-palette_dist <- c(
-  "SAE" = "#4472C4", "One-step" = "#ED7D31", "Ideal" = "#A5A5A5"
-)
-
-# PPT 导出辅助：将多张 ggplot 汇总到一个可编辑 pptx
-plot_list <- list()
+palette_main <- c(OLS = "#4472C4", Polynomial = "#ED7D31", Ridge = "#70AD47", GAM = "#FFC000", Kernel = "#5B9BD5", Partial_Linear = "#A5A5A5")
+palette_blb <- c("γ=0.6, s=5" = "#305496", "γ=0.6, s=10" = "#4472C4", "γ=0.6, s=20" = "#8EAADB", "γ=0.7, s=5" = "#C55A11", "γ=0.7, s=10" = "#ED7D31", "γ=0.7, s=20" = "#F4B183", "全数据Bootstrap" = "#A5A5A5")
+palette_batch <- c("32" = "#4472C4", "64" = "#70AD47", "128" = "#ED7D31", "256" = "#FFC000", "512" = "#5B9BD5")
+palette_dist <- c("SAE" = "#4472C4", "One-step" = "#ED7D31", "Ideal" = "#A5A5A5")
+model_labels <- c(OLS = "OLS", Polynomial = "多项式回归", Ridge = "岭回归", GAM = "GAM", Kernel = "核回归", Partial_Linear = "部分线性模型")
 
 save_to_ppt <- function(plot_list, outfile) {
   doc <- read_pptx()
   for (nm in names(plot_list)) {
     doc <- add_slide(doc, layout = "Blank", master = "Office Theme")
-    doc <- ph_with(
-      doc,
-      value = rvg::dml(ggobj = plot_list[[nm]], fonts = list(sans = "Microsoft YaHei")),
-      location = ph_location_fullsize()
-    )
+    doc <- ph_with(doc, value = rvg::dml(ggobj = plot_list[[nm]], fonts = list(sans = "Microsoft YaHei")), location = ph_location_fullsize())
   }
   print(doc, target = outfile)
-  message("可编辑 PPT 已保存: ", outfile)
 }
 
-# CSV 写出辅助（UTF-8 BOM，兼容 Excel 中文）
-write_csv_bom <- function(df, path) {
-  write.csv(df, path, row.names = FALSE, fileEncoding = "UTF-8-BOM")
-  message("表格已保存: ", path)
-}
+write_csv_bom <- function(df, path) write.csv(df, path, row.names = FALSE, fileEncoding = "UTF-8-BOM")
 
-message("=== 环境初始化完成 ===")
-
-# ----------------------------------------------------------------------------
-# 2. 数据生成参数
-# ----------------------------------------------------------------------------
 beta_true <- c(2.5, 0.8, -0.5, 1.2, 0.3, -0.7, 0.4, 0.6, -0.3)
 p <- 8
 rho <- 0.5
 sigma <- 1
-
-# AR(1) 协方差矩阵
-Sigma <- matrix(0, p, p)
-for (i in 1:p) {
-  for (j in 1:p) {
-    Sigma[i, j] <- rho^abs(i - j)
-  }
-}
-
-# 样本量设置
+Sigma <- rho^abs(outer(seq_len(p), seq_len(p), `-`))
 sample_sizes <- c(1000, 10000, 100000)
 n_large <- max(sample_sizes)
 n_medium <- median(sample_sizes)
 
-# ----------------------------------------------------------------------------
-# 实验1：不同样本量的模型比较
-# ----------------------------------------------------------------------------
-message("\n=== 实验1：不同样本量的模型比较 ===")
-all_results <- list()
+fit_lm_fast <- function(Xm, yv) lm.fit(Xm, yv)$coefficients
+lm_metrics <- function(y_true, y_pred, elapsed) {
+  ss_res <- sum((y_true - y_pred)^2)
+  ss_tot <- sum((y_true - mean(y_true))^2)
+  list(time = elapsed, mse = mean((y_true - y_pred)^2), r2 = 1 - ss_res / ss_tot)
+}
+
+all_results <- vector("list", length(sample_sizes))
+names(all_results) <- as.character(sample_sizes)
 
 for (n in sample_sizes) {
-  message(sprintf("--- 样本量 n = %d ---", n))
-  
-  # 生成数据
   X <- MASS::mvrnorm(n, mu = rep(0, p), Sigma = Sigma)
-  colnames(X) <- c("income", "age", "rooms", "distance",
-                   "crime_rate", "school_rating", "tax_rate", "employment")
-  X_design <- cbind(1, X)
-  y <- as.vector(X_design %*% beta_true + rnorm(n, 0, sigma))
-  
-  res_n <- list()
-  
-  # 1. OLS
-  t0 <- Sys.time()
-  fit_ols <- lm(y ~ ., data = data.frame(y = y, X))
-  t_ols <- as.numeric(Sys.time() - t0, units = "secs")
-  pred_ols <- predict(fit_ols)
-  res_n$OLS <- list(time = t_ols,
-                    mse = mean((y - pred_ols)^2),
-                    r2 = summary(fit_ols)$r.squared)
-  message(sprintf("OLS: 时间 %.4f 秒, MSE %.6f", res_n$OLS$time, res_n$OLS$mse))
-  
-  # 2. 多项式回归（income, age 用二次正交多项式）
-  t0 <- Sys.time()
-  fit_poly <- lm(y ~ poly(income, 2) + poly(age, 2) + rooms + distance +
-                   crime_rate + school_rating + tax_rate + employment,
-                 data = data.frame(y = y, X))
-  t_poly <- as.numeric(Sys.time() - t0, units = "secs")
-  pred_poly <- predict(fit_poly)
-  res_n$Polynomial <- list(time = t_poly,
-                           mse = mean((y - pred_poly)^2),
-                           r2 = summary(fit_poly)$r.squared)
-  message(sprintf("Polynomial: 时间 %.4f 秒, MSE %.6f", res_n$Polynomial$time, res_n$Polynomial$mse))
-  
-  # 3. 岭回归
-  t0 <- Sys.time()
-  cv_ridge <- cv.glmnet(X, y, alpha = 0, nfolds = 5, standardize = TRUE)
+  colnames(X) <- c("income", "age", "rooms", "distance", "crime_rate", "school_rating", "tax_rate", "employment")
+  y <- as.vector(cbind(1, X) %*% beta_true + rnorm(n, 0, sigma))
+  df <- data.frame(y = y, X)
+
+  t0 <- Sys.time(); fit_ols <- lm(y ~ ., data = df)
+  res_ols <- lm_metrics(y, predict(fit_ols), as.numeric(Sys.time() - t0, units = "secs"))
+
+  t0 <- Sys.time(); fit_poly <- lm(y ~ poly(income, 2) + poly(age, 2) + rooms + distance + crime_rate + school_rating + tax_rate + employment, data = df)
+  res_poly <- lm_metrics(y, predict(fit_poly), as.numeric(Sys.time() - t0, units = "secs"))
+
+  t0 <- Sys.time(); cv_ridge <- cv.glmnet(X, y, alpha = 0, nfolds = 5, standardize = TRUE)
   fit_ridge <- glmnet(X, y, alpha = 0, lambda = cv_ridge$lambda.min, standardize = TRUE)
   t_ridge <- as.numeric(Sys.time() - t0, units = "secs")
   pred_ridge <- as.vector(predict(fit_ridge, newx = X))
-  ss_res <- sum((y - pred_ridge)^2)
-  ss_tot <- sum((y - mean(y))^2)
-  res_n$Ridge <- list(time = t_ridge,
-                      mse = mean((y - pred_ridge)^2),
-                      r2 = 1 - ss_res / ss_tot,
-                      lambda = cv_ridge$lambda.min)
-  message(sprintf("Ridge: 时间 %.4f 秒, MSE %.6f, Lambda %.4f", res_n$Ridge$time, res_n$Ridge$mse, res_n$Ridge$lambda))
-  
-  # 4. GAM
-  t0 <- Sys.time()
-  df_gam <- data.frame(y = y, X)
-  fit_gam <- mgcv::gam(y ~ s(income) + s(age) + s(rooms) + distance +
-                         crime_rate + school_rating + tax_rate + employment,
-                       data = df_gam, method = "REML")
+  res_ridge <- c(lm_metrics(y, pred_ridge, t_ridge), list(lambda = cv_ridge$lambda.min))
+
+  t0 <- Sys.time(); fit_gam <- mgcv::gam(y ~ s(income) + s(age) + s(rooms) + distance + crime_rate + school_rating + tax_rate + employment, data = df, method = "REML")
   t_gam <- as.numeric(Sys.time() - t0, units = "secs")
-  pred_gam <- predict(fit_gam)
-  res_n$GAM <- list(time = t_gam,
-                    mse = mean((y - pred_gam)^2),
-                    r2 = summary(fit_gam)$r.sq)
-  message(sprintf("GAM: 时间 %.4f 秒, MSE %.6f", res_n$GAM$time, res_n$GAM$mse))
-  
-  # 5. 核回归（仅对 income 单变量做局部线性核回归）
-  t0 <- Sys.time()
-  bw_obj <- np::npregbw(xdat = X[, "income"], ydat = y, regtype = "ll")
-  fit_kernel <- np::npreg(bw_obj)
+  res_gam <- c(lm_metrics(y, predict(fit_gam), t_gam), list(r2 = summary(fit_gam)$r.sq))
+
+  t0 <- Sys.time(); bw_obj <- np::npregbw(xdat = X[, "income"], ydat = y, regtype = "ll"); fit_kernel <- np::npreg(bw_obj)
   t_kernel <- as.numeric(Sys.time() - t0, units = "secs")
   pred_kernel <- fitted(fit_kernel)
-  res_n$Kernel <- list(time = t_kernel,
-                       mse = mean((y - pred_kernel)^2),
-                       r2 = 1 - sum((y - pred_kernel)^2) / sum((y - mean(y))^2),
-                       bandwidth = fit_kernel$bw)
-  message(sprintf("Kernel: 时间 %.4f 秒, MSE %.6f", res_n$Kernel$time, res_n$Kernel$mse))
-  
-  # 6. 部分线性模型
-  t0 <- Sys.time()
-  fit_pl <- mgcv::gam(y ~ rooms + distance + crime_rate + school_rating +
-                        tax_rate + employment + s(income),
-                      data = df_gam, method = "REML")
+  res_kernel <- c(lm_metrics(y, pred_kernel, t_kernel), list(bandwidth = fit_kernel$bw))
+
+  t0 <- Sys.time(); fit_pl <- mgcv::gam(y ~ rooms + distance + crime_rate + school_rating + tax_rate + employment + s(income), data = df, method = "REML")
   t_pl <- as.numeric(Sys.time() - t0, units = "secs")
-  pred_pl <- predict(fit_pl)
-  res_n$Partial_Linear <- list(time = t_pl,
-                               mse = mean((y - pred_pl)^2),
-                               r2 = summary(fit_pl)$r.sq)
-  message(sprintf("Partial Linear: 时间 %.4f 秒, MSE %.6f", res_n$Partial_Linear$time, res_n$Partial_Linear$mse))
-  
-  all_results[[as.character(n)]] <- res_n
+  res_pl <- c(lm_metrics(y, predict(fit_pl), t_pl), list(r2 = summary(fit_pl)$r.sq))
+
+  all_results[[as.character(n)]] <- list(OLS = res_ols, Polynomial = res_poly, Ridge = res_ridge, GAM = res_gam, Kernel = res_kernel, Partial_Linear = res_pl)
 }
 
-# ----------------------------------------------------------------------------
-# 实验2：分布式计算（基于最大样本量）
-# ----------------------------------------------------------------------------
-message("\n=== 实验2：分布式计算模拟 ===")
+# 分布式模拟
 n <- n_large
 X <- MASS::mvrnorm(n, mu = rep(0, p), Sigma = Sigma)
-colnames(X) <- c("income", "age", "rooms", "distance",
-                 "crime_rate", "school_rating", "tax_rate", "employment")
+colnames(X) <- c("income", "age", "rooms", "distance", "crime_rate", "school_rating", "tax_rate", "employment")
 y <- as.vector(cbind(1, X) %*% beta_true + rnorm(n, 0, sigma))
+Xd <- cbind(1, X)
 
-# 基准 OLS
-t0 <- Sys.time()
-fit_full <- lm(y ~ ., data = data.frame(y = y, X))
-base_time <- as.numeric(Sys.time() - t0, units = "secs")
-base_coef <- coef(fit_full)
+t0 <- Sys.time(); fit_full <- fit_lm_fast(Xd, y); base_time <- as.numeric(Sys.time() - t0, units = "secs")
 
 K_values <- c(5, 10, 20, 50)
-dist_df <- data.frame()
+dist_rows <- vector("list", length(K_values) * 2)
+row_id <- 1
 
 for (K in K_values) {
-  message(sprintf("分布式 K = %d ...", K))
-  
-  # SAE
   t0 <- Sys.time()
-  idx <- sample(rep(1:K, length.out = n))
-  local_est <- matrix(0, K, p + 1)
-  for (k in 1:K) {
-    ik <- which(idx == k)
-    local_est[k, ] <- coef(lm(y ~ ., data = data.frame(y = y[ik], X[ik, , drop = FALSE])))
-  }
-  sae_est <- colMeans(local_est)
+  split_idx <- split(seq_len(n), sample(rep(seq_len(K), length.out = n)))
+  local_est <- vapply(split_idx, function(ix) fit_lm_fast(Xd[ix, , drop = FALSE], y[ix]), numeric(p + 1))
   sae_time <- as.numeric(Sys.time() - t0, units = "secs")
-  
-  # One-step
+
   t0 <- Sys.time()
-  pilot_idx <- sample(1:n, min(1000, n))
-  beta0 <- coef(lm(y ~ ., data = data.frame(y = y[pilot_idx], X[pilot_idx, , drop = FALSE])))
-  idx2 <- sample(rep(1:K, length.out = n))
-  grads <- matrix(0, K, p + 1)
-  for (k in 1:K) {
-    ik <- which(idx2 == k)
-    Xd <- cbind(1, X[ik, , drop = FALSE])
-    resid <- y[ik] - Xd %*% beta0
-    grads[k, ] <- -2 * t(Xd) %*% resid / length(ik)
-  }
-  avg_grad <- colMeans(grads)
-  Xd_full <- cbind(1, X)
-  fisher <- 2 * t(Xd_full) %*% Xd_full / n
-  onestep_est <- beta0 - solve(fisher) %*% avg_grad
+  pilot_idx <- sample.int(n, min(1000, n))
+  beta0 <- fit_lm_fast(Xd[pilot_idx, , drop = FALSE], y[pilot_idx])
+  split_idx2 <- split(seq_len(n), sample(rep(seq_len(K), length.out = n)))
+  grads <- vapply(split_idx2, function(ix) {
+    Xi <- Xd[ix, , drop = FALSE]
+    as.vector(-2 * crossprod(Xi, y[ix] - Xi %*% beta0) / length(ix))
+  }, numeric(p + 1))
+  avg_grad <- rowMeans(grads)
+  fisher <- 2 * crossprod(Xd) / n
+  onestep_est <- as.vector(beta0 - solve(fisher, avg_grad))
   onestep_time <- as.numeric(Sys.time() - t0, units = "secs")
-  
-  dist_df <- rbind(dist_df,
-                   data.frame(K = K, Method = "SAE", Time = sae_time,
-                              Speedup = base_time / sae_time),
-                   data.frame(K = K, Method = "One-step", Time = onestep_time,
-                              Speedup = base_time / onestep_time))
+  invisible(onestep_est)
+
+  dist_rows[[row_id]] <- data.frame(K = K, Method = "SAE", Time = sae_time, Speedup = base_time / sae_time); row_id <- row_id + 1
+  dist_rows[[row_id]] <- data.frame(K = K, Method = "One-step", Time = onestep_time, Speedup = base_time / onestep_time); row_id <- row_id + 1
 }
 
-dist_df <- rbind(dist_df,
-                 data.frame(K = K_values, Method = "Ideal",
-                            Time = base_time / K_values, Speedup = K_values))
+dist_df <- dplyr::bind_rows(dist_rows, data.frame(K = K_values, Method = "Ideal", Time = base_time / K_values, Speedup = K_values))
 
-# ----------------------------------------------------------------------------
-# 实验3：BLB 子抽样（基于中等样本量）
-# ----------------------------------------------------------------------------
-message("\n=== 实验3：BLB 子抽样 ===")
+# BLB
 n <- n_medium
 X <- MASS::mvrnorm(n, mu = rep(0, p), Sigma = Sigma)
-colnames(X) <- c("income", "age", "rooms", "distance",
-                 "crime_rate", "school_rating", "tax_rate", "employment")
+colnames(X) <- c("income", "age", "rooms", "distance", "crime_rate", "school_rating", "tax_rate", "employment")
 y <- as.vector(cbind(1, X) %*% beta_true + rnorm(n, 0, sigma))
+Xd <- cbind(1, X)
 
+coef_boot <- function(Xm, ym, idx) fit_lm_fast(Xm[idx, , drop = FALSE], ym[idx])
 gamma_values <- c(0.6, 0.7)
 s_values <- c(5, 10, 20)
-blb_df <- data.frame()
 
-# 基准：全数据 bootstrap（500 次，减少耗时）
-message("计算全数据 Bootstrap 基准...")
 B_full <- 500
-full_boot_est <- matrix(0, B_full, p + 1)
-for (b in 1:B_full) {
-  boot_idx <- sample(1:n, n, replace = TRUE)
-  full_boot_est[b, ] <- coef(lm(y ~ ., data = data.frame(y = y[boot_idx], X[boot_idx, , drop = FALSE])))
-}
-full_boot_se <- apply(full_boot_est, 2, sd)
-full_boot_mean <- colMeans(full_boot_est)
-full_cov <- mean(beta_true >= (full_boot_mean - 1.96 * full_boot_se) &
-                   beta_true <= (full_boot_mean + 1.96 * full_boot_se))
+full_boot <- replicate(B_full, coef_boot(Xd, y, sample.int(n, n, replace = TRUE)))
+full_boot_se <- apply(full_boot, 1, sd)
+full_boot_mean <- rowMeans(full_boot)
+full_cov <- mean(beta_true >= (full_boot_mean - 1.96 * full_boot_se) & beta_true <= (full_boot_mean + 1.96 * full_boot_se))
 
+blb_rows <- list()
 for (gamma in gamma_values) {
   for (s in s_values) {
-    message(sprintf("BLB: gamma=%.1f, s=%d", gamma, s))
     m <- floor(n^gamma)
     B <- 100
-    subset_means <- matrix(0, s, p + 1)
-    subset_vars <- matrix(0, s, p + 1)
-    
-    for (i in 1:s) {
-      sub_idx <- sample(1:n, m, replace = FALSE)
-      X_sub <- X[sub_idx, , drop = FALSE]
+    subset_mean <- matrix(0, s, p + 1)
+    subset_var <- matrix(0, s, p + 1)
+
+    for (i in seq_len(s)) {
+      sub_idx <- sample.int(n, m)
+      X_sub <- Xd[sub_idx, , drop = FALSE]
       y_sub <- y[sub_idx]
-      boot_est <- matrix(0, B, p + 1)
-      for (b in 1:B) {
-        bidx <- sample(1:m, m, replace = TRUE)
-        boot_est[b, ] <- coef(lm(y ~ ., data = data.frame(y = y_sub[bidx], X_sub[bidx, , drop = FALSE])))
-      }
-      subset_means[i, ] <- colMeans(boot_est)
-      subset_vars[i, ] <- apply(boot_est, 2, var)
+      boot_sub <- replicate(B, coef_boot(X_sub, y_sub, sample.int(m, m, replace = TRUE)))
+      subset_mean[i, ] <- rowMeans(boot_sub)
+      subset_var[i, ] <- apply(boot_sub, 1, var)
     }
-    
-    blb_est <- colMeans(subset_means)
-    blb_se <- sqrt(colMeans(subset_vars))
+
+    blb_est <- colMeans(subset_mean)
+    blb_se <- sqrt(colMeans(subset_var))
     ci_lower <- blb_est - 1.96 * blb_se
     ci_upper <- blb_est + 1.96 * blb_se
-    coverage <- mean(beta_true >= ci_lower & beta_true <= ci_upper)
-    ci_width <- mean(ci_upper - ci_lower)
-    
-    blb_df <- rbind(blb_df, data.frame(
-      Gamma = gamma, S = s, Coverage = coverage, CI_Width = ci_width,
+
+    blb_rows[[length(blb_rows) + 1]] <- data.frame(
+      Gamma = gamma, S = s,
+      Coverage = mean(beta_true >= ci_lower & beta_true <= ci_upper),
+      CI_Width = mean(ci_upper - ci_lower),
       Method = sprintf("γ=%.1f, s=%d", gamma, s)
-    ))
+    )
   }
 }
 
-blb_df <- rbind(blb_df,
-                data.frame(Gamma = NA, S = NA, Coverage = full_cov,
-                           CI_Width = mean(2 * 1.96 * full_boot_se),
-                           Method = "全数据Bootstrap"))
+blb_df <- dplyr::bind_rows(blb_rows, data.frame(Gamma = NA, S = NA, Coverage = full_cov, CI_Width = mean(2 * 1.96 * full_boot_se), Method = "全数据Bootstrap"))
 
-# ----------------------------------------------------------------------------
-# 实验4：SGD 小批次优化（基于中等样本量）
-# ----------------------------------------------------------------------------
-message("\n=== 实验4：SGD 小批次优化 ===")
-# 复用实验3的数据
-X_design <- cbind(1, X)
+# SGD
+X_design <- Xd
 batch_sizes <- c(32, 64, 128, 256, 512)
-sgd_loss_df <- data.frame()
-sgd_summary_df <- data.frame()
+sgd_loss_rows <- list()
+sgd_summary_rows <- list()
 
 for (bs in batch_sizes) {
-  message(sprintf("SGD: batch_size = %d", bs))
   beta <- rnorm(p + 1, 0, 0.1)
   lr <- 0.01
   epochs <- 50
   loss_hist <- numeric(epochs * ceiling(n / bs))
   iter <- 1
-  
-  for (epoch in 1:epochs) {
-    shuffle <- sample(1:n)
-    Xs <- X_design[shuffle, , drop = FALSE]
-    ys <- y[shuffle]
+
+  for (epoch in seq_len(epochs)) {
+    ord <- sample.int(n)
+    Xs <- X_design[ord, , drop = FALSE]
+    ys <- y[ord]
     num_batches <- ceiling(n / bs)
-    for (b in 1:num_batches) {
-      start_idx <- (b - 1) * bs + 1
-      end_idx <- min(b * bs, n)
-      Xb <- Xs[start_idx:end_idx, , drop = FALSE]
-      yb <- ys[start_idx:end_idx]
-      resid <- yb - Xb %*% beta
-      grad <- -2 * t(Xb) %*% resid / length(yb)
-      beta <- beta - lr * as.vector(grad)
-      if (iter <= length(loss_hist)) {
-        loss_hist[iter] <- mean((y - X_design %*% beta)^2)
-      }
+
+    for (b in seq_len(num_batches)) {
+      ix <- ((b - 1) * bs + 1):min(b * bs, n)
+      Xb <- Xs[ix, , drop = FALSE]
+      yb <- ys[ix]
+      beta <- beta - lr * as.vector(-2 * crossprod(Xb, yb - Xb %*% beta) / length(yb))
+      loss_hist[iter] <- mean((y - X_design %*% beta)^2)
       iter <- iter + 1
     }
     lr <- lr * 0.99
   }
-  
-  loss_hist <- loss_hist[1:(iter - 1)]
-  pred_sgd <- X_design %*% beta
-  mse_sgd <- mean((y - pred_sgd)^2)
-  r2_sgd <- 1 - sum((y - pred_sgd)^2) / sum((y - mean(y))^2)
-  t_sgd <- NA  # 未单独计时，用于汇总表占位
-  
-  # 采样用于绘图
-  sample_idx <- round(seq(1, length(loss_hist), length.out = min(200, length(loss_hist))))
-  sgd_loss_df <- rbind(sgd_loss_df,
-                       data.frame(Iteration = sample_idx,
-                                  Loss = loss_hist[sample_idx],
-                                  BatchSize = factor(bs, levels = batch_sizes)))
-  
-  sgd_summary_df <- rbind(sgd_summary_df,
-                          data.frame(
-                            BatchSize = bs, Epochs = epochs,
-                            初始学习率 = 0.01, 最终MSE = round(mse_sgd, 6),
-                            R2 = round(r2_sgd, 4), 收敛迭代次数 = length(loss_hist)
-                          ))
+
+  loss_hist <- loss_hist[seq_len(iter - 1)]
+  pred <- X_design %*% beta
+  sgd_loss_rows[[length(sgd_loss_rows) + 1]] <- data.frame(
+    Iteration = round(seq(1, length(loss_hist), length.out = min(200, length(loss_hist)))),
+    Loss = loss_hist[round(seq(1, length(loss_hist), length.out = min(200, length(loss_hist))))],
+    BatchSize = factor(bs, levels = batch_sizes)
+  )
+  sgd_summary_rows[[length(sgd_summary_rows) + 1]] <- data.frame(
+    BatchSize = bs, Epochs = epochs, 初始学习率 = 0.01,
+    最终MSE = round(mean((y - pred)^2), 6),
+    R2 = round(1 - sum((y - pred)^2) / sum((y - mean(y))^2), 4),
+    收敛迭代次数 = length(loss_hist)
+  )
 }
 
-# ----------------------------------------------------------------------------
-# 可视化
-# ----------------------------------------------------------------------------
-message("\n=== 生成可视化图表 ===")
+sgd_loss_df <- dplyr::bind_rows(sgd_loss_rows)
+sgd_summary_df <- dplyr::bind_rows(sgd_summary_rows)
 
-# 图1：不同样本量下的计算时间对比
-plot_compute <- data.frame()
-for (size in as.character(sample_sizes)) {
-  res <- all_results[[size]]
-  for (model in names(res)) {
-    plot_compute <- rbind(plot_compute, data.frame(
-      SampleSize = factor(size, levels = as.character(sample_sizes)),
-      Model = model, Time = res[[model]]$time, MSE = res[[model]]$mse, R2 = res[[model]]$r2
-    ))
-  }
-}
+# 绘图
+plot_list <- list()
 
-model_labels <- c(
-  OLS = "OLS", Polynomial = "多项式回归", Ridge = "岭回归",
-  GAM = "GAM", Kernel = "核回归", Partial_Linear = "部分线性模型"
-)
+plot_compute <- dplyr::bind_rows(lapply(names(all_results), function(size) {
+  dplyr::bind_rows(lapply(names(all_results[[size]]), function(model) {
+    z <- all_results[[size]][[model]]
+    data.frame(SampleSize = factor(size, levels = as.character(sample_sizes)), Model = model, Time = z$time, MSE = z$mse, R2 = z$r2)
+  }))
+}))
 
 p1 <- ggplot(plot_compute, aes(x = SampleSize, y = Time, fill = Model)) +
-  geom_bar(stat = "identity", position = position_dodge(width = 0.8),
-           width = 0.7, color = "white", linewidth = 0.3) +
+  geom_col(position = position_dodge(width = 0.8), width = 0.7, color = "white", linewidth = 0.3) +
   scale_y_log10(expand = expansion(mult = c(0, 0.05))) +
-  labs(x = "样本量", y = "计算时间（秒，对数坐标）", fill = "模型") +
-  theme_cn(base_size = 12) +
-  theme(axis.text.x = element_text(angle = 0), legend.position = "bottom") +
+  labs(title = "模型计算效率比较", subtitle = "不同样本规模下的时间开销", x = "样本量", y = "计算时间（秒，对数坐标）", fill = "模型") +
+  theme_cn() + theme(legend.position = "bottom") +
   scale_fill_manual(values = palette_main, labels = model_labels)
 plot_list[["图1_计算时间对比"]] <- p1
 
-# 图2：模型 MSE 对比（使用已完成结果中的最大样本量）
-available_sizes <- suppressWarnings(as.numeric(names(all_results)))
-available_sizes <- available_sizes[!is.na(available_sizes)]
-
-if (length(available_sizes) == 0) {
-  stop("all_results 为空，无法生成 MSE 对比图。")
-}
-
-target_size <- max(available_sizes)
-res_large <- all_results[[as.character(target_size)]]
-
-plot_mse <- data.frame()
-for (model in names(res_large)) {
-  mse_val <- res_large[[model]]$mse
-  if (!is.null(mse_val) && length(mse_val) == 1 && is.numeric(mse_val) && !is.na(mse_val)) {
-    plot_mse <- rbind(
-      plot_mse,
-      data.frame(Model = model, MSE = as.numeric(mse_val))
-    )
-  }
-}
-
-if (nrow(plot_mse) == 0) {
-  stop("没有可用的 MSE 数据，无法生成图2。")
-}
-
-plot_mse <- plot_mse[order(plot_mse$MSE), , drop = FALSE]
-plot_mse$Model <- factor(plot_mse$Model, levels = plot_mse$Model)
+res_large <- all_results[[as.character(max(sample_sizes))]]
+plot_mse <- dplyr::bind_rows(lapply(names(res_large), function(model) data.frame(Model = model, MSE = res_large[[model]]$mse))) |>
+  dplyr::arrange(MSE) |>
+  dplyr::mutate(Model = factor(Model, levels = Model))
 
 p2 <- ggplot(plot_mse, aes(x = Model, y = MSE, fill = Model)) +
-  geom_bar(stat = "identity", width = 0.7, color = "white", linewidth = 0.3) +
+  geom_col(width = 0.7, color = "white", linewidth = 0.3) +
   geom_text(aes(label = sprintf("%.4f", MSE)), vjust = -0.5, size = 3.5, family = font_family) +
-  labs(x = "模型", y = "均方误差（MSE）") +
-  theme_cn(base_size = 12) +
-  theme(legend.position = "none", axis.text.x = element_text(angle = 30, hjust = 1)) +
+  labs(title = "统计精度比较", subtitle = "样本量最大的情形下 MSE 排序", x = "模型", y = "均方误差（MSE）") +
+  theme_cn() + theme(legend.position = "none", axis.text.x = element_text(angle = 30, hjust = 1)) +
   scale_fill_manual(values = palette_main, labels = model_labels) +
   scale_y_continuous(expand = expansion(mult = c(0, 0.05)))
 plot_list[["图2_MSE对比"]] <- p2
 
-# 图3：分布式计算加速比
 p3 <- ggplot(dist_df, aes(x = K, y = Speedup, color = Method, linetype = Method)) +
   geom_line(linewidth = 1.2) +
   geom_point(aes(fill = Method), size = 3.5, shape = 21, color = "white", stroke = 0.8) +
   geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "gray50", alpha = 0.7) +
-  labs(x = "节点数量 K", y = "加速比", color = "方法", linetype = "方法") +
-  theme_cn(base_size = 12) +
-  theme(legend.position = "bottom") +
-  scale_color_manual(values = palette_dist) +
-  scale_fill_manual(values = palette_dist, guide = "none") +
+  labs(title = "分布式线性回归加速效果", subtitle = "与理想线性加速对比", x = "节点数量 K", y = "加速比", color = "方法", linetype = "方法") +
+  theme_cn() + theme(legend.position = "bottom") +
+  scale_color_manual(values = palette_dist) + scale_fill_manual(values = palette_dist, guide = "none") +
   scale_x_continuous(breaks = K_values)
 plot_list[["图3_加速比曲线"]] <- p3
 
-# 图4：BLB 覆盖率
+blb_df$Method <- factor(blb_df$Method, levels = rev(unique(blb_df$Method)))
 p4 <- ggplot(blb_df, aes(x = Method, y = Coverage, fill = Method)) +
-  geom_bar(stat = "identity", width = 0.7, color = "white", linewidth = 0.3) +
+  geom_col(width = 0.7, color = "white", linewidth = 0.3) +
   geom_hline(yintercept = 0.95, linetype = "dashed", color = "#C44E52", linewidth = 0.8) +
   geom_text(aes(label = sprintf("%.2f%%", Coverage * 100)), hjust = -0.15, size = 3.2, family = font_family) +
-  labs(x = "方法", y = "覆盖率") +
-  theme_cn(base_size = 12) +
-  theme(legend.position = "none") +
+  labs(title = "BLB 区间覆盖率", subtitle = "红线为 95% 目标覆盖率", x = "方法", y = "覆盖率") +
+  theme_cn() + theme(legend.position = "none") +
   scale_fill_manual(values = palette_blb) +
-  scale_x_discrete(limits = rev(levels(factor(blb_df$Method)))) +
   scale_y_continuous(labels = percent, limits = c(0, 1.05), expand = c(0, 0)) +
   coord_flip()
 plot_list[["图4_BLB覆盖率"]] <- p4
 
-# 图5：SGD 收敛曲线
 p5 <- ggplot(sgd_loss_df, aes(x = Iteration, y = Loss, color = BatchSize)) +
-  geom_line(linewidth = 0.8, alpha = 0.8) +
-  labs(x = "迭代次数", y = "损失值（MSE，对数坐标）", color = "批大小") +
-  theme_cn(base_size = 12) +
-  theme(legend.position = "right") +
-  scale_color_manual(values = palette_batch) +
-  scale_y_log10()
+  geom_line(linewidth = 0.8, alpha = 0.85) +
+  labs(title = "SGD 收敛轨迹", subtitle = "批大小影响优化稳定性与速度", x = "迭代次数", y = "损失值（MSE，对数坐标）", color = "批大小") +
+  theme_cn() + theme(legend.position = "right") +
+  scale_color_manual(values = palette_batch) + scale_y_log10()
 plot_list[["图5_SGD收敛曲线"]] <- p5
 
-# 图6：模型复杂度-精度权衡
 complexity <- c(OLS = 1, Polynomial = 2, Ridge = 2, GAM = 4, Kernel = 5, Partial_Linear = 3)
-plot_complex <- data.frame()
-for (model in names(res_large)) {
-  plot_complex <- rbind(plot_complex, data.frame(
-    Model = model, Complexity = complexity[model],
-    MSE = res_large[[model]]$mse, R2 = res_large[[model]]$r2,
-    Time = res_large[[model]]$time
-  ))
-}
+plot_complex <- dplyr::bind_rows(lapply(names(res_large), function(model) {
+  data.frame(Model = model, Complexity = complexity[model], MSE = res_large[[model]]$mse, R2 = res_large[[model]]$r2, Time = res_large[[model]]$time)
+}))
 
 p6 <- ggplot(plot_complex, aes(x = Complexity, y = MSE, size = Time, color = Model)) +
   geom_point(alpha = 0.85, stroke = 0.8) +
-  geom_text(aes(label = model_labels[Model]), vjust = -1.2, size = 3.5, family = font_family) +
-  labs(x = "模型复杂度评分", y = "均方误差（MSE）",
-       size = "计算时间（秒）", color = "模型") +
-  theme_cn(base_size = 12) +
-  theme(legend.position = "right") +
+  geom_text(aes(label = model_labels[Model]), vjust = -1.1, size = 3.5, family = font_family) +
+  labs(title = "模型复杂度-精度-时间权衡", subtitle = "用于方法选择的三维对照图", x = "模型复杂度评分", y = "均方误差（MSE）", size = "计算时间（秒）", color = "模型") +
+  theme_cn() + theme(legend.position = "right") +
   scale_color_manual(values = palette_main, labels = model_labels) +
   scale_size_continuous(range = c(3, 15))
 plot_list[["图6_复杂度精度权衡"]] <- p6
 
-# 导出 PPT
 save_to_ppt(plot_list, file.path(output_dir, "simulation_figures.pptx"))
 
-# ----------------------------------------------------------------------------
-# 表格输出
-# ----------------------------------------------------------------------------
-message("\n=== 生成表格输出 ===")
-
-# 表1：各样本量模型性能对比
 for (n in sample_sizes) {
   res <- all_results[[as.character(n)]]
-  tbl <- data.frame(
-    模型 = names(res),
-    计算时间_秒 = round(sapply(res, function(x) x$time), 4),
-    MSE = round(sapply(res, function(x) x$mse), 6),
-    R2 = round(sapply(res, function(x) x$r2), 4)
-  )
-  tbl <- tbl[order(tbl$MSE), ]
-  write_csv_bom(tbl, file.path(output_dir, sprintf("sim_table1_model_n%d.csv", n)))
+  tbl <- data.frame(模型 = names(res), 计算时间_秒 = round(sapply(res, `[[`, "time"), 4), MSE = round(sapply(res, `[[`, "mse"), 6), R2 = round(sapply(res, `[[`, "r2"), 4))
+  write_csv_bom(tbl[order(tbl$MSE), ], file.path(output_dir, sprintf("sim_table1_model_n%d.csv", n)))
 }
 
-# 表2：分布式计算结果
-dist_table <- data.frame()
-for (K in K_values) {
-  dist_table <- rbind(dist_table, data.frame(
+dist_table <- dplyr::bind_rows(lapply(K_values, function(K) {
+  data.frame(
     K = K,
     SAE_时间_秒 = round(dist_df$Time[dist_df$K == K & dist_df$Method == "SAE"], 4),
     SAE_加速比 = round(dist_df$Speedup[dist_df$K == K & dist_df$Method == "SAE"], 2),
     OneStep_时间_秒 = round(dist_df$Time[dist_df$K == K & dist_df$Method == "One-step"], 4),
     OneStep_加速比 = round(dist_df$Speedup[dist_df$K == K & dist_df$Method == "One-step"], 2),
     理想加速比 = K
-  ))
-}
+  )
+}))
+
 write_csv_bom(dist_table, file.path(output_dir, "sim_table2_distributed.csv"))
-
-# 表3：BLB 结果
 write_csv_bom(blb_df, file.path(output_dir, "sim_table3_blb.csv"))
-
-# 表4：SGD 结果
 write_csv_bom(sgd_summary_df, file.path(output_dir, "sim_table4_sgd.csv"))
-
-# 表5：模型选择建议
-recommendation <- data.frame(
+write_csv_bom(data.frame(
   场景 = c("快速原型", "高精度需求", "大数据集", "非线性关系", "可解释性优先"),
   推荐模型 = c("OLS", "GAM", "分布式OLS", "GAM/核回归", "OLS/多项式"),
-  理由 = c("计算最快，易于实现", "能捕捉复杂非线性关系", "分布式计算可加速",
-           "非参数方法更灵活", "线性模型易于解释"),
+  理由 = c("计算最快，易于实现", "能捕捉复杂非线性关系", "分布式计算可加速", "非参数方法更灵活", "线性模型易于解释"),
   注意事项 = c("假设线性关系", "计算成本较高", "需要多核环境", "需要更多数据", "可能欠拟合")
-)
-write_csv_bom(recommendation, file.path(output_dir, "sim_table5_recommendations.csv"))
+), file.path(output_dir, "sim_table5_recommendations.csv"))
 
-message("\n=== 数值模拟全部完成，结果保存在 output/ 目录 ===")
+message("simulation.R 执行完成，结果保存在 output/ 目录")
