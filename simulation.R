@@ -72,7 +72,7 @@ sample_sizes <- c(1000, 10000, 100000)
 n_large <- max(sample_sizes)
 n_medium <- median(sample_sizes)
 
-extract_lm_coef <- function(Xm, yv) lm.fit(Xm, yv)$coefficients
+extract_lm_coefficients <- function(Xm, yv) lm.fit(Xm, yv)$coefficients
 lm_metrics <- function(y_true, y_pred, elapsed) {
   ss_res <- sum((y_true - y_pred)^2)
   ss_tot <- sum((y_true - mean(y_true))^2)
@@ -134,7 +134,7 @@ y <- as.vector(cbind(1, X) %*% beta_true + rnorm(n, 0, sigma))
 Xd <- cbind(1, X)
 
 t0 <- Sys.time()
-fit_full <- extract_lm_coef(Xd, y)
+fit_full <- extract_lm_coefficients(Xd, y)
 base_time <- as.numeric(Sys.time() - t0, units = "secs")
 
 K_values <- c(5, 10, 20, 50)
@@ -144,13 +144,14 @@ row_id <- 1
 for (K in K_values) {
   t0 <- Sys.time()
   split_idx <- split(seq_len(n), sample(rep(seq_len(K), length.out = n)))
-  # vapply 返回 (p+1) x K 矩阵，每列对应一个子节点的局部系数
-  local_est <- vapply(split_idx, function(ix) extract_lm_coef(Xd[ix, , drop = FALSE], y[ix]), numeric(p + 1))
+  # vapply 返回 (p+1) x K 矩阵，每列对应一个子节点的局部系数，再按行求均值得到 SAE 系数
+  local_est <- vapply(split_idx, function(ix) extract_lm_coefficients(Xd[ix, , drop = FALSE], y[ix]), numeric(p + 1))
+  sae_est <- rowMeans(local_est)
   sae_time <- as.numeric(Sys.time() - t0, units = "secs")
 
   t0 <- Sys.time()
   pilot_idx <- sample.int(n, min(1000, n))
-  beta0 <- extract_lm_coef(Xd[pilot_idx, , drop = FALSE], y[pilot_idx])
+  beta0 <- extract_lm_coefficients(Xd[pilot_idx, , drop = FALSE], y[pilot_idx])
   split_idx2 <- split(seq_len(n), sample(rep(seq_len(K), length.out = n)))
   grads <- vapply(split_idx2, function(ix) {
     Xi <- Xd[ix, , drop = FALSE]
@@ -176,12 +177,12 @@ colnames(X) <- c("income", "age", "rooms", "distance", "crime_rate", "school_rat
 y <- as.vector(cbind(1, X) %*% beta_true + rnorm(n, 0, sigma))
 Xd <- cbind(1, X)
 
-bootstrap_lm_coef <- function(Xm, ym, idx) extract_lm_coef(Xm[idx, , drop = FALSE], ym[idx])
+bootstrap_lm_coefficients <- function(Xm, ym, idx) extract_lm_coefficients(Xm[idx, , drop = FALSE], ym[idx])
 gamma_values <- c(0.6, 0.7)
 s_values <- c(5, 10, 20)
 
 B_full <- 500
-full_boot <- replicate(B_full, bootstrap_lm_coef(Xd, y, sample.int(n, n, replace = TRUE)))
+full_boot <- replicate(B_full, bootstrap_lm_coefficients(Xd, y, sample.int(n, n, replace = TRUE)))
 full_boot_se <- apply(full_boot, 1, sd)
 full_boot_mean <- rowMeans(full_boot)
 full_cov <- mean(beta_true >= (full_boot_mean - 1.96 * full_boot_se) & beta_true <= (full_boot_mean + 1.96 * full_boot_se))
@@ -198,7 +199,7 @@ for (gamma in gamma_values) {
       sub_idx <- sample.int(n, m)
       X_sub <- Xd[sub_idx, , drop = FALSE]
       y_sub <- y[sub_idx]
-      boot_sub <- replicate(B, bootstrap_lm_coef(X_sub, y_sub, sample.int(m, m, replace = TRUE)))
+      boot_sub <- replicate(B, bootstrap_lm_coefficients(X_sub, y_sub, sample.int(m, m, replace = TRUE)))
       subset_mean[i, ] <- rowMeans(boot_sub)
       subset_var[i, ] <- apply(boot_sub, 1, var)
     }
