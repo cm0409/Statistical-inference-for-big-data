@@ -10,8 +10,11 @@ output_dir <- file.path(getwd(), "output")
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
 font_family <- if (.Platform$OS.type == "windows") {
-  windowsFonts(YaHei = windowsFont("微软雅黑")); "YaHei"
-} else "sans"
+  windowsFonts(YaHei = windowsFont("微软雅黑"))
+  "YaHei"
+} else {
+  "sans"
+}
 
 theme_cn <- function(base_size = 12) {
   theme_bw(base_size = base_size, base_family = font_family) +
@@ -59,7 +62,8 @@ beta_true <- c(2.5, 0.8, -0.5, 1.2, 0.3, -0.7, 0.4, 0.6, -0.3)
 p <- 8
 rho <- 0.5
 sigma <- 1
-Sigma <- rho^abs(outer(seq_len(p), seq_len(p), `-`))
+# AR(1) 协方差：Sigma[i,j] = rho^|i-j|
+Sigma <- rho^abs(outer(seq_len(p), seq_len(p), "-"))
 sample_sizes <- c(1000, 10000, 100000)
 n_large <- max(sample_sizes)
 n_medium <- median(sample_sizes)
@@ -125,7 +129,9 @@ colnames(X) <- c("income", "age", "rooms", "distance", "crime_rate", "school_rat
 y <- as.vector(cbind(1, X) %*% beta_true + rnorm(n, 0, sigma))
 Xd <- cbind(1, X)
 
-t0 <- Sys.time(); fit_full <- fit_lm_fast(Xd, y); base_time <- as.numeric(Sys.time() - t0, units = "secs")
+t0 <- Sys.time()
+fit_full <- fit_lm_fast(Xd, y)
+base_time <- as.numeric(Sys.time() - t0, units = "secs")
 
 K_values <- c(5, 10, 20, 50)
 dist_rows <- vector("list", length(K_values) * 2)
@@ -150,8 +156,10 @@ for (K in K_values) {
   onestep_est <- as.vector(beta0 - solve(fisher, avg_grad))
   onestep_time <- as.numeric(Sys.time() - t0, units = "secs")
 
-  dist_rows[[row_id]] <- data.frame(K = K, Method = "SAE", Time = sae_time, Speedup = base_time / sae_time); row_id <- row_id + 1
-  dist_rows[[row_id]] <- data.frame(K = K, Method = "One-step", Time = onestep_time, Speedup = base_time / onestep_time); row_id <- row_id + 1
+  dist_rows[[row_id]] <- data.frame(K = K, Method = "SAE", Time = sae_time, Speedup = base_time / sae_time)
+  row_id <- row_id + 1
+  dist_rows[[row_id]] <- data.frame(K = K, Method = "One-step", Time = onestep_time, Speedup = base_time / onestep_time)
+  row_id <- row_id + 1
 }
 
 dist_df <- dplyr::bind_rows(dist_rows, data.frame(K = K_values, Method = "Ideal", Time = base_time / K_values, Speedup = K_values))
@@ -293,6 +301,7 @@ p3 <- ggplot(dist_df, aes(x = K, y = Speedup, color = Method, linetype = Method)
   scale_x_continuous(breaks = K_values)
 plot_list[["图3_加速比曲线"]] <- p3
 
+# 反转顺序以便在横向柱图中把全数据基准放在最上方
 blb_df$Method <- factor(blb_df$Method, levels = rev(unique(blb_df$Method)))
 p4 <- ggplot(blb_df, aes(x = Method, y = Coverage, fill = Method)) +
   geom_col(width = 0.7, color = "white", linewidth = 0.3) +

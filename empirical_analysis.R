@@ -10,8 +10,11 @@ output_dir <- file.path(getwd(), "output")
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
 font_family <- if (.Platform$OS.type == "windows") {
-  windowsFonts(YaHei = windowsFont("微软雅黑")); "YaHei"
-} else "sans"
+  windowsFonts(YaHei = windowsFont("微软雅黑"))
+  "YaHei"
+} else {
+  "sans"
+}
 
 theme_cn <- function(base_size = 12) {
   theme_bw(base_size = base_size, base_family = font_family) +
