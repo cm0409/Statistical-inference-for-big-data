@@ -28,7 +28,11 @@ theme_cn <- function(base_size = 12) {
     )
 }
 
-palette_var <- c("fare_amount" = "#4472C4", "tip_amount" = "#ED7D31", "trip_distance" = "#70AD47")
+palette_var <- c(
+  "fare_amount" = "#4472C4",
+  "tip_amount" = "#ED7D31",
+  "trip_distance" = "#70AD47"
+)
 palette_payment <- c("信用卡" = "#4472C4", "现金" = "#ED7D31")
 palette_coef <- c("截距" = "#4472C4", "行程距离" = "#ED7D31", "乘客数" = "#70AD47")
 palette_method <- c("全量OLS" = "#4472C4", "1%子样本OLS" = "#ED7D31", "模拟分布式SAE" = "#70AD47")
@@ -62,8 +66,9 @@ subsample_results <- lapply(variables, function(var) {
   x <- taxi_clean[[var]]
   true_mean <- mean(x)
   idx_mat <- replicate(n_subsamples, sample.int(n_obs, subsample_size), simplify = "matrix")
-  estimates <- colMeans(matrix(x[idx_mat], nrow = subsample_size))
-  ses <- apply(matrix(x[idx_mat], nrow = subsample_size), 2, sd) / sqrt(subsample_size)
+  sampled_mat <- matrix(x[idx_mat], nrow = subsample_size)
+  estimates <- colMeans(sampled_mat)
+  ses <- apply(sampled_mat, 2, sd) / sqrt(subsample_size)
   ci_lower <- estimates - 1.96 * ses
   ci_upper <- estimates + 1.96 * ses
   data.frame(rep_id = seq_len(n_subsamples), estimate = estimates, se = ses, ci_lower = ci_lower, ci_upper = ci_upper, covers_true = ci_lower <= true_mean & true_mean <= ci_upper)
@@ -195,11 +200,15 @@ plot_list[["图5_BLB系数分布"]] <- ggplot(blb_coef_long, aes(x = 参数, y =
 response <- taxi_clean$fare_amount
 X_time <- model.matrix(~trip_distance + passenger_count + tip_amount, data = taxi_clean)
 
-t0 <- Sys.time(); coef_all <- lm.fit(X_time, response)$coefficients; time_all <- as.numeric(Sys.time() - t0, units = "secs")
+t0 <- Sys.time()
+coef_all <- lm.fit(X_time, response)$coefficients
+time_all <- as.numeric(Sys.time() - t0, units = "secs")
 invisible(coef_all)
 
 sample_1pct_idx <- sample.int(n_obs, round(n_obs * 0.01))
-t0 <- Sys.time(); coef_1pct <- lm.fit(X_time[sample_1pct_idx, , drop = FALSE], response[sample_1pct_idx])$coefficients; time_1pct <- as.numeric(Sys.time() - t0, units = "secs")
+t0 <- Sys.time()
+coef_1pct <- lm.fit(X_time[sample_1pct_idx, , drop = FALSE], response[sample_1pct_idx])$coefficients
+time_1pct <- as.numeric(Sys.time() - t0, units = "secs")
 invisible(coef_1pct)
 
 t0 <- Sys.time()

@@ -28,9 +28,19 @@ theme_cn <- function(base_size = 12) {
     )
 }
 
-palette_main <- c(OLS = "#4472C4", Polynomial = "#ED7D31", Ridge = "#70AD47", GAM = "#FFC000", Kernel = "#5B9BD5", Partial_Linear = "#A5A5A5")
-palette_blb <- c("γ=0.6, s=5" = "#305496", "γ=0.6, s=10" = "#4472C4", "γ=0.6, s=20" = "#8EAADB", "γ=0.7, s=5" = "#C55A11", "γ=0.7, s=10" = "#ED7D31", "γ=0.7, s=20" = "#F4B183", "全数据Bootstrap" = "#A5A5A5")
-palette_batch <- c("32" = "#4472C4", "64" = "#70AD47", "128" = "#ED7D31", "256" = "#FFC000", "512" = "#5B9BD5")
+palette_main <- c(
+  OLS = "#4472C4", Polynomial = "#ED7D31", Ridge = "#70AD47",
+  GAM = "#FFC000", Kernel = "#5B9BD5", Partial_Linear = "#A5A5A5"
+)
+palette_blb <- c(
+  "γ=0.6, s=5" = "#305496", "γ=0.6, s=10" = "#4472C4", "γ=0.6, s=20" = "#8EAADB",
+  "γ=0.7, s=5" = "#C55A11", "γ=0.7, s=10" = "#ED7D31", "γ=0.7, s=20" = "#F4B183",
+  "全数据Bootstrap" = "#A5A5A5"
+)
+palette_batch <- c(
+  "32" = "#4472C4", "64" = "#70AD47", "128" = "#ED7D31",
+  "256" = "#FFC000", "512" = "#5B9BD5"
+)
 palette_dist <- c("SAE" = "#4472C4", "One-step" = "#ED7D31", "Ideal" = "#A5A5A5")
 model_labels <- c(OLS = "OLS", Polynomial = "多项式回归", Ridge = "岭回归", GAM = "GAM", Kernel = "核回归", Partial_Linear = "部分线性模型")
 
@@ -61,8 +71,7 @@ lm_metrics <- function(y_true, y_pred, elapsed) {
   list(time = elapsed, mse = mean((y_true - y_pred)^2), r2 = 1 - ss_res / ss_tot)
 }
 
-all_results <- vector("list", length(sample_sizes))
-names(all_results) <- as.character(sample_sizes)
+all_results <- setNames(vector("list", length(sample_sizes)), as.character(sample_sizes))
 
 for (n in sample_sizes) {
   X <- MASS::mvrnorm(n, mu = rep(0, p), Sigma = Sigma)
@@ -70,30 +79,41 @@ for (n in sample_sizes) {
   y <- as.vector(cbind(1, X) %*% beta_true + rnorm(n, 0, sigma))
   df <- data.frame(y = y, X)
 
-  t0 <- Sys.time(); fit_ols <- lm(y ~ ., data = df)
+  t0 <- Sys.time()
+  fit_ols <- lm(y ~ ., data = df)
   res_ols <- lm_metrics(y, predict(fit_ols), as.numeric(Sys.time() - t0, units = "secs"))
 
-  t0 <- Sys.time(); fit_poly <- lm(y ~ poly(income, 2) + poly(age, 2) + rooms + distance + crime_rate + school_rating + tax_rate + employment, data = df)
+  t0 <- Sys.time()
+  fit_poly <- lm(y ~ poly(income, 2) + poly(age, 2) + rooms + distance + crime_rate + school_rating + tax_rate + employment, data = df)
   res_poly <- lm_metrics(y, predict(fit_poly), as.numeric(Sys.time() - t0, units = "secs"))
 
-  t0 <- Sys.time(); cv_ridge <- cv.glmnet(X, y, alpha = 0, nfolds = 5, standardize = TRUE)
+  t0 <- Sys.time()
+  cv_ridge <- cv.glmnet(X, y, alpha = 0, nfolds = 5, standardize = TRUE)
   fit_ridge <- glmnet(X, y, alpha = 0, lambda = cv_ridge$lambda.min, standardize = TRUE)
   t_ridge <- as.numeric(Sys.time() - t0, units = "secs")
   pred_ridge <- as.vector(predict(fit_ridge, newx = X))
-  res_ridge <- c(lm_metrics(y, pred_ridge, t_ridge), list(lambda = cv_ridge$lambda.min))
+  metric_ridge <- lm_metrics(y, pred_ridge, t_ridge)
+  res_ridge <- list(time = metric_ridge$time, mse = metric_ridge$mse, r2 = metric_ridge$r2, lambda = cv_ridge$lambda.min)
 
-  t0 <- Sys.time(); fit_gam <- mgcv::gam(y ~ s(income) + s(age) + s(rooms) + distance + crime_rate + school_rating + tax_rate + employment, data = df, method = "REML")
+  t0 <- Sys.time()
+  fit_gam <- mgcv::gam(y ~ s(income) + s(age) + s(rooms) + distance + crime_rate + school_rating + tax_rate + employment, data = df, method = "REML")
   t_gam <- as.numeric(Sys.time() - t0, units = "secs")
-  res_gam <- c(lm_metrics(y, predict(fit_gam), t_gam), list(r2 = summary(fit_gam)$r.sq))
+  metric_gam <- lm_metrics(y, predict(fit_gam), t_gam)
+  res_gam <- list(time = metric_gam$time, mse = metric_gam$mse, r2 = summary(fit_gam)$r.sq)
 
-  t0 <- Sys.time(); bw_obj <- np::npregbw(xdat = X[, "income"], ydat = y, regtype = "ll"); fit_kernel <- np::npreg(bw_obj)
+  t0 <- Sys.time()
+  bw_obj <- np::npregbw(xdat = X[, "income"], ydat = y, regtype = "ll")
+  fit_kernel <- np::npreg(bw_obj)
   t_kernel <- as.numeric(Sys.time() - t0, units = "secs")
   pred_kernel <- fitted(fit_kernel)
-  res_kernel <- c(lm_metrics(y, pred_kernel, t_kernel), list(bandwidth = fit_kernel$bw))
+  metric_kernel <- lm_metrics(y, pred_kernel, t_kernel)
+  res_kernel <- list(time = metric_kernel$time, mse = metric_kernel$mse, r2 = metric_kernel$r2, bandwidth = fit_kernel$bw)
 
-  t0 <- Sys.time(); fit_pl <- mgcv::gam(y ~ rooms + distance + crime_rate + school_rating + tax_rate + employment + s(income), data = df, method = "REML")
+  t0 <- Sys.time()
+  fit_pl <- mgcv::gam(y ~ rooms + distance + crime_rate + school_rating + tax_rate + employment + s(income), data = df, method = "REML")
   t_pl <- as.numeric(Sys.time() - t0, units = "secs")
-  res_pl <- c(lm_metrics(y, predict(fit_pl), t_pl), list(r2 = summary(fit_pl)$r.sq))
+  metric_pl <- lm_metrics(y, predict(fit_pl), t_pl)
+  res_pl <- list(time = metric_pl$time, mse = metric_pl$mse, r2 = summary(fit_pl)$r.sq)
 
   all_results[[as.character(n)]] <- list(OLS = res_ols, Polynomial = res_poly, Ridge = res_ridge, GAM = res_gam, Kernel = res_kernel, Partial_Linear = res_pl)
 }
@@ -129,7 +149,6 @@ for (K in K_values) {
   fisher <- 2 * crossprod(Xd) / n
   onestep_est <- as.vector(beta0 - solve(fisher, avg_grad))
   onestep_time <- as.numeric(Sys.time() - t0, units = "secs")
-  invisible(onestep_est)
 
   dist_rows[[row_id]] <- data.frame(K = K, Method = "SAE", Time = sae_time, Speedup = base_time / sae_time); row_id <- row_id + 1
   dist_rows[[row_id]] <- data.frame(K = K, Method = "One-step", Time = onestep_time, Speedup = base_time / onestep_time); row_id <- row_id + 1
@@ -219,11 +238,8 @@ for (bs in batch_sizes) {
 
   loss_hist <- loss_hist[seq_len(iter - 1)]
   pred <- X_design %*% beta
-  sgd_loss_rows[[length(sgd_loss_rows) + 1]] <- data.frame(
-    Iteration = round(seq(1, length(loss_hist), length.out = min(200, length(loss_hist)))),
-    Loss = loss_hist[round(seq(1, length(loss_hist), length.out = min(200, length(loss_hist))))],
-    BatchSize = factor(bs, levels = batch_sizes)
-  )
+  sample_ix <- round(seq(1, length(loss_hist), length.out = min(200, length(loss_hist))))
+  sgd_loss_rows[[length(sgd_loss_rows) + 1]] <- data.frame(Iteration = sample_ix, Loss = loss_hist[sample_ix], BatchSize = factor(bs, levels = batch_sizes))
   sgd_summary_rows[[length(sgd_summary_rows) + 1]] <- data.frame(
     BatchSize = bs, Epochs = epochs, 初始学习率 = 0.01,
     最终MSE = round(mean((y - pred)^2), 6),
