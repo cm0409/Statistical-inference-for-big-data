@@ -9,7 +9,10 @@ set.seed(42)
 # 1) 依赖与通用设置
 # ----------------------------------------------------------------------------
 required_pkgs <- c("dplyr", "ggplot2", "arrow", "officer", "rvg", "scales", "viridis")
-missing_pkgs <- required_pkgs[!vapply(required_pkgs, requireNamespace, logical(1), quietly = TRUE)]
+is_pkg_available <- function(pkg) {
+  tryCatch(nzchar(find.package(pkg, quiet = TRUE)), error = function(e) FALSE)
+}
+missing_pkgs <- required_pkgs[!vapply(required_pkgs, is_pkg_available, logical(1))]
 if (length(missing_pkgs) > 0) {
   stop("缺少依赖包，请先安装：", paste(missing_pkgs, collapse = ", "))
 }
@@ -64,7 +67,8 @@ write_csv_bom <- function(df, path) {
   message("表格已保存: ", path)
 }
 
-n_cores <- max(1L, parallel::detectCores(logical = FALSE) - 1L)
+detected_cores <- parallel::detectCores(logical = FALSE)
+n_cores <- if (is.na(detected_cores)) 1L else max(1L, detected_cores - 1L)
 map_reps <- function(X, FUN, ...) {
   if (.Platform$OS.type == "unix" && n_cores > 1L) {
     parallel::mclapply(X, FUN, ..., mc.cores = n_cores)
@@ -73,18 +77,20 @@ map_reps <- function(X, FUN, ...) {
   }
 }
 
-fast_lm_coef <- function(X, y) {
-  fit <- lm.fit(x = X, y = y)
-  b <- fit$coefficients
+replace_na_coef <- function(b) {
+  if (anyNA(b)) warning("检测到不可估系数，已用 0 填充。")
   b[is.na(b)] <- 0
   b
 }
 
+fast_lm_coef <- function(X, y) {
+  fit <- lm.fit(x = X, y = y)
+  replace_na_coef(fit$coefficients)
+}
+
 fast_wls_coef <- function(X, y, w) {
   fit <- lm.wfit(x = X, y = y, w = w)
-  b <- fit$coefficients
-  b[is.na(b)] <- 0
-  b
+  replace_na_coef(fit$coefficients)
 }
 
 message("=== 环境初始化完成 ===")

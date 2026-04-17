@@ -12,7 +12,10 @@ required_pkgs <- c(
   "MASS", "glmnet", "mgcv", "np", "ggplot2", "dplyr", "scales",
   "viridis", "officer", "rvg"
 )
-missing_pkgs <- required_pkgs[!vapply(required_pkgs, requireNamespace, logical(1), quietly = TRUE)]
+is_pkg_available <- function(pkg) {
+  tryCatch(nzchar(find.package(pkg, quiet = TRUE)), error = function(e) FALSE)
+}
+missing_pkgs <- required_pkgs[!vapply(required_pkgs, is_pkg_available, logical(1))]
 if (length(missing_pkgs) > 0) {
   stop("缺少依赖包，请先安装：", paste(missing_pkgs, collapse = ", "))
 }
@@ -74,7 +77,8 @@ write_csv_bom <- function(df, path) {
   message("表格已保存: ", path)
 }
 
-n_cores <- max(1L, parallel::detectCores(logical = FALSE) - 1L)
+detected_cores <- parallel::detectCores(logical = FALSE)
+n_cores <- if (is.na(detected_cores)) 1L else max(1L, detected_cores - 1L)
 map_reps <- function(X, FUN, ...) {
   if (.Platform$OS.type == "unix" && n_cores > 1L) {
     parallel::mclapply(X, FUN, ..., mc.cores = n_cores)
@@ -83,18 +87,20 @@ map_reps <- function(X, FUN, ...) {
   }
 }
 
-fast_lm_coef <- function(X, y) {
-  fit <- lm.fit(x = X, y = y)
-  b <- fit$coefficients
+replace_na_coef <- function(b) {
+  if (anyNA(b)) warning("检测到不可估系数，已用 0 填充。")
   b[is.na(b)] <- 0
   b
 }
 
+fast_lm_coef <- function(X, y) {
+  fit <- lm.fit(x = X, y = y)
+  replace_na_coef(fit$coefficients)
+}
+
 fast_wls_coef <- function(X, y, w) {
   fit <- lm.wfit(x = X, y = y, w = w)
-  b <- fit$coefficients
-  b[is.na(b)] <- 0
-  b
+  replace_na_coef(fit$coefficients)
 }
 
 # ----------------------------------------------------------------------------
@@ -210,7 +216,7 @@ dist_rows <- lapply(K_values, function(K) {
     EstBiasL2 = c(sqrt(sum((sae_est - base_coef)^2)), sqrt(sum((onestep_est - base_coef)^2)))
   )
 })
-dist_df <- bind_rows(dist_rows, data.frame(K = K_values, Method = "Ideal", Time = base_time / K_values, Speedup = K_values, EstBiasL2 = 0))
+dist_df <- bind_rows(dist_rows, data.frame(K = K_values, Method = "Ideal", Time = base_time / K_values, Speedup = K_values, EstBiasL2 = NA_real_))
 
 # ----------------------------------------------------------------------------
 # 实验3：BLB 子抽样
@@ -345,7 +351,9 @@ plot_list[["图1_计算时间对比"]] <- ggplot(plot_compute, aes(x = SampleSiz
 
 res_large <- all_results[[as.character(max(sample_sizes))]]
 plot_mse <- bind_rows(lapply(names(res_large), function(model) data.frame(Model = model, MSE = res_large[[model]]$mse)))
-plot_mse <- plot_mse |> arrange(MSE) |> mutate(Model = factor(Model, levels = Model))
+plot_mse <- plot_mse |> arrange(MSE)
+sorted_models <- plot_mse$Model
+plot_mse <- plot_mse |> mutate(Model = factor(Model, levels = sorted_models))
 
 plot_list[["图2_MSE对比"]] <- ggplot(plot_mse, aes(x = Model, y = MSE, fill = Model)) +
   geom_col(width = 0.7, color = "white", linewidth = 0.3) +
@@ -375,7 +383,7 @@ plot_list[["图4_BLB覆盖率"]] <- ggplot(blb_df, aes(x = Method, y = Coverage,
   theme_cn() +
   theme(legend.position = "none") +
   scale_fill_manual(values = palette_blb) +
-  scale_x_discrete(limits = rev(unique(blb_df$Method))) +
+  scale_x_discrete(limits = rev(levels(factor(blb_df$Method)))) +
   scale_y_continuous(labels = percent, limits = c(0, 1.05), expand = c(0, 0)) +
   coord_flip()
 
