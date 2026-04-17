@@ -1,1 +1,56 @@
-本科毕业论文
+## Statistical-inference-for-big-data
+
+本仓库包含“大数据统计推断”相关的模拟与实证脚本，覆盖分布式、子抽样与小批次方法。
+
+### 主要脚本
+
+- `/home/runner/work/Statistical-inference-for-big-data/Statistical-inference-for-big-data/bigdata_experiment_complete.R`  
+  综合实验主脚本（SAE/One-step、BLB、SGD、图表与表格）
+- `/home/runner/work/Statistical-inference-for-big-data/Statistical-inference-for-big-data/simulation.R`  
+  数值模拟实验脚本
+- `/home/runner/work/Statistical-inference-for-big-data/Statistical-inference-for-big-data/empirical_analysis.R`  
+  NYC Taxi 实证分析脚本
+- `/home/runner/work/Statistical-inference-for-big-data/Statistical-inference-for-big-data/integrated_comparison_experiment.R`  
+  **统一横向对比与综合使用实验脚本（新增）**
+
+### 新增统一对比实验说明
+
+`integrated_comparison_experiment.R` 实现以下内容：
+
+1. 同口径横向比较：  
+   - 分布式：SAE、One-step  
+   - 子抽样：SRS、Stratified、BLB  
+   - 小批次：Mini-batch SGD（不同 batch）
+2. 两条主线：  
+   - Simulation（可控真值）  
+   - Empirical（NYC Taxi 真实数据）
+3. 综合方案（Hybrid）：  
+   - BLB -> One-step  
+   - One-step -> SGD  
+   - Stratified-SGD -> Aggregate
+4. 统一输出：  
+   - 精度-效率-稳定性总表  
+   - 参数敏感性表  
+   - 综合方案收益表  
+   - 预算视角总表（时间/内存/样本访问）  
+   - 帕累托图、覆盖率-区间宽度图、收敛曲线、雷达图  
+   - 运行日志
+
+### 运行方式
+
+在 R 环境中执行：
+
+```r
+source("/home/runner/work/Statistical-inference-for-big-data/Statistical-inference-for-big-data/integrated_comparison_experiment.R")
+run_integrated_comparison(mode = "quick")
+```
+
+完整模式：
+
+```r
+run_integrated_comparison(mode = "full")
+```
+
+默认输出目录：
+
+`/home/runner/work/Statistical-inference-for-big-data/Statistical-inference-for-big-data/output/unified_comparison`
