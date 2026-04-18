@@ -346,15 +346,19 @@ run_distributed_onestep <- function(df, feature_cols, coef_name, true_mean, true
 
 run_subsample_stratified <- function(df, feature_cols, coef_name, true_mean, true_coef, sample_frac = 0.1, strata_n = 4) {
   primary_feature <- df[[feature_cols[1]]]
-  strata <- cut(primary_feature, breaks = quantile(primary_feature, probs = seq(0, 1, length.out = strata_n + 1)), include.lowest = TRUE)
+  strata <- cut(
+    primary_feature,
+    breaks = quantile(primary_feature, probs = seq(0, 1, length.out = strata_n + 1), na.rm = TRUE),
+    include.lowest = TRUE
+  )
   n_take <- max(200, floor(nrow(df) * sample_frac))
   n_per_stratum <- max(10, floor(n_take / strata_n))
+
   sample_df <- df |>
     dplyr::mutate(.strata = strata) |>
     dplyr::group_by(.strata) |>
-    dplyr::slice_sample(n = min(n_per_stratum, dplyr::n())) |>
-    dplyr::ungroup() |>
-    dplyr::select(-.strata)
+    dplyr::group_modify(~ dplyr::slice_sample(.x, n = min(nrow(.x), n_per_stratum))) |>
+    dplyr::ungroup()
 
   fit_linear_and_ci(sample_df, df, feature_cols, coef_name, true_mean, true_coef)
 }

@@ -1,0 +1,7 @@
+"track","method","config_id","error_gain_pct","runtime_gain_pct","cover_gain","ref_method","ref_config"
+"Empirical","BLB->One-step","A",-0.00195251222597411,-1646.18104915361,0,"One-step","K10"
+"Empirical","One-step->SGD","B",-1283058080.59205,-58050.7223048855,-1,"One-step","K10"
+"Empirical","Stratified-SGD->Aggregate","C",NA,-22299.3190882088,NA,"One-step","K10"
+"Simulation","BLB->One-step","A",-0.652016424354689,-3402.89499911259,0,"SAE","K5"
+"Simulation","One-step->SGD","B",-3.10877399639548,-862.029844225702,0,"SAE","K5"
+"Simulation","Stratified-SGD->Aggregate","C",-11416.3865012779,-463.930263355496,0,"SAE","K5"
