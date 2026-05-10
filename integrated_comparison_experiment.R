@@ -90,6 +90,7 @@ sanitize_track_slug <- function(track_name) {
   if (slug == "") {
     codepoints <- utf8ToInt(track_name)
     codepoint_suffix <- paste(length(codepoints), paste(codepoints, collapse = "_"), sep = "_")
+    # 当轨道名称仅含特殊字符时，使用未命名轨道前缀并保留 codepoints 便于排查
     slug <- paste0("未命名轨道_", codepoint_suffix)
   }
   slug
@@ -885,6 +886,7 @@ run_integrated_comparison <- function(
 
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
   timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
+  # 使用中文 run_tag，并保留下划线分隔以提升跨平台可读性
   mode_label <- ifelse(mode == "quick", "快速", "完整")
   run_tag <- paste0("综合对比_", mode_label, "_", timestamp)
 
