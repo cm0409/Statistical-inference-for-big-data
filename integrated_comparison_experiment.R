@@ -68,8 +68,8 @@ sanitize_track_slug <- function(track_name) {
   slug <- gsub("^_+|_+$", "", slug)
   if (slug == "") {
     codepoints <- utf8ToInt(track_name)
-    name_hash <- paste(length(codepoints), paste(codepoints, collapse = "_"), sep = "_")
-    slug <- paste0("unnamed_track_", name_hash)
+    codepoint_suffix <- paste(length(codepoints), paste(codepoints, collapse = "_"), sep = "_")
+    slug <- paste0("unnamed_track_", codepoint_suffix)
   }
   slug
 }
@@ -866,6 +866,12 @@ run_integrated_comparison <- function(
   summary_table <- summarize_method_results(all_results)
   budget_table <- compute_budget_views(summary_table)
 
+  unknown_tracks <- setdiff(track_order, unique(summary_table$track))
+  if (length(unknown_tracks) > 0) {
+    # 非致命提示，允许继续执行 / Non-fatal warning to keep the run going
+    warning("track_order contains unknown tracks: ", paste(unknown_tracks, collapse = ", "), call. = FALSE)
+  }
+
   # 参数敏感性：聚焦可调参数方法
   sensitivity_table <- summary_table |>
     dplyr::filter(grepl("K|frac|g|bs", config_id)) |>
@@ -896,11 +902,6 @@ run_integrated_comparison <- function(
   plot_convergence(all_convergence, file.path(output_dir, paste0(run_tag, "_fig_convergence.png")))
   plot_radar(summary_table, file.path(output_dir, paste0(run_tag, "_fig_radar.png")))
 
-  unknown_tracks <- setdiff(track_order, unique(summary_table$track))
-  if (length(unknown_tracks) > 0) {
-    # 非致命提示，允许继续执行 / Non-fatal warning to keep the run going
-    warning("track_order contains unknown tracks: ", paste(unknown_tracks, collapse = ", "), call. = FALSE)
-  }
   # 先按 track_order 指定顺序排列，再将未包含的轨道追加在末尾 / Prioritize track_order, then append any remaining tracks
   tracks <- unique(summary_table$track)
   tracks <- c(intersect(track_order, tracks), setdiff(tracks, track_order))
