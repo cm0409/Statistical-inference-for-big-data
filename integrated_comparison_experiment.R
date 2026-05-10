@@ -65,9 +65,11 @@ sanitize_track_slug <- function(track_name) {
   slug <- tolower(track_name)
   slug <- gsub("[^a-z0-9]+", "_", slug)
   slug <- gsub("^_+|_+$", "", slug)
-  if (slug == "") slug <- "track"
+  if (slug == "") slug <- "unnamed_track"
   slug
 }
+
+has_rows <- function(df) nrow(df) > 0
 
 downsample_history <- function(history_vec, max_points = MAX_CONVERGENCE_POINTS) {
   round(seq(1, length(history_vec), length.out = min(max_points, length(history_vec))))
@@ -694,7 +696,7 @@ plot_pareto <- function(summary_df, out_file, track_name = NULL) {
     title_text <- paste0(title_text, " - ", track_name)
     facet_layer <- NULL
   }
-  if (nrow(plot_df) == 0) return(invisible(NULL))
+  if (!has_rows(plot_df)) return(invisible(NULL))
   p <- ggplot2::ggplot(plot_df, ggplot2::aes(x = mean_runtime_sec, y = mean_abs_error_coef, color = category, shape = method)) +
     ggplot2::geom_point(size = 3.2, alpha = 0.9)
   if (!is.null(facet_layer)) {
@@ -721,7 +723,7 @@ plot_coverage_width <- function(summary_df, out_file, track_name = NULL) {
     title_text <- paste0(title_text, " - ", track_name)
     facet_layer <- NULL
   }
-  if (nrow(plot_df) == 0) return(invisible(NULL))
+  if (!has_rows(plot_df)) return(invisible(NULL))
   ci_width_normalizer <- pmax(max(plot_df$mean_ci_width_coef, na.rm = TRUE), MIN_CI_WIDTH_DENOMINATOR)
   p <- ggplot2::ggplot(plot_df, ggplot2::aes(x = reorder(paste(method, config_id, sep = "_"), mean_ci_cover_coef), y = mean_ci_cover_coef, fill = category)) +
     ggplot2::geom_col(alpha = 0.85) +
@@ -745,7 +747,7 @@ plot_convergence <- function(convergence_df, out_file, track_name = NULL) {
     title_text <- paste0(title_text, " - ", track_name)
     facet_layer <- NULL
   }
-  if (nrow(plot_df) == 0) return(invisible(NULL))
+  if (!has_rows(plot_df)) return(invisible(NULL))
   p <- ggplot2::ggplot(plot_df, ggplot2::aes(x = iteration, y = loss, color = method)) +
     ggplot2::geom_line(alpha = 0.85, linewidth = 0.8)
   if (!is.null(facet_layer)) {
@@ -765,7 +767,7 @@ plot_radar <- function(summary_df, out_file, track_name = NULL) {
     plot_df <- dplyr::filter(plot_df, track == track_name)
     title_text <- paste0(title_text, " - ", track_name)
   }
-  if (nrow(plot_df) == 0) return(invisible(NULL))
+  if (!has_rows(plot_df)) return(invisible(NULL))
   top_methods <- plot_df |>
     dplyr::group_by(track, category) |>
     dplyr::slice_min(order_by = mean_abs_error_coef, n = 1, with_ties = FALSE) |>
