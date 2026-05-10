@@ -7,9 +7,9 @@
 - `bigdata_experiment_complete.R`
   综合实验主脚本（SAE/One-step、BLB、SGD、图表与表格）
 - `simulation.R`（已废弃）
-  数值模拟实验脚本（请使用 `integrated_comparison_experiment.R`）
+  数值模拟实验脚本（已废弃，请使用 `integrated_comparison_experiment.R`）
 - `empirical_analysis.R`（已废弃）
-  NYC Taxi 实证分析脚本（请使用 `integrated_comparison_experiment.R`）
+  NYC Taxi 实证分析脚本（已废弃，请使用 `integrated_comparison_experiment.R`）
 - `integrated_comparison_experiment.R`
   统一横向对比与综合使用实验脚本
 

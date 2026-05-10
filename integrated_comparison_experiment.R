@@ -879,6 +879,7 @@ run_integrated_comparison <- function(
   plot_convergence(all_convergence, file.path(output_dir, paste0(run_tag, "_fig_convergence.png")))
   plot_radar(summary_table, file.path(output_dir, paste0(run_tag, "_fig_radar.png")))
 
+  # 按 track_order 指定顺序优先，其余轨道追加在末尾
   tracks <- unique(summary_table$track)
   tracks <- c(intersect(track_order, tracks), setdiff(tracks, track_order))
   for (track_name in tracks) {
