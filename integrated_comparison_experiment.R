@@ -59,8 +59,8 @@ EPSILON_DENOMINATOR <- 1e-8
 MIN_CI_WIDTH_DENOMINATOR <- 1e-10
 DEFAULT_TRACK_ORDER <- c("Simulation", "Empirical")
 
-# 将 track 名称转换为适合文件名的安全小写后缀
-# track_name: 轨道名称字符；返回值为文件名友好的 slug
+# 将 track 名称转换为适合文件名的安全小写后缀 / Convert track names to filename-safe lowercase slugs
+# track_name: 轨道名称字符；返回值为文件名友好的 slug / track_name: input track label; returns a filename-safe slug
 sanitize_track_slug <- function(track_name) {
   slug <- tolower(track_name)
   slug <- gsub("[^a-z0-9]+", "_", slug)
@@ -881,7 +881,7 @@ run_integrated_comparison <- function(
   plot_convergence(all_convergence, file.path(output_dir, paste0(run_tag, "_fig_convergence.png")))
   plot_radar(summary_table, file.path(output_dir, paste0(run_tag, "_fig_radar.png")))
 
-  # 先按 track_order 指定顺序排列，再将未包含的轨道追加在末尾
+  # 先按 track_order 指定顺序排列，再将未包含的轨道追加在末尾 / Prioritize track_order, then append any remaining tracks
   tracks <- unique(summary_table$track)
   tracks <- c(intersect(track_order, tracks), setdiff(tracks, track_order))
   for (track_name in tracks) {
