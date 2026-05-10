@@ -91,7 +91,7 @@ SPEEDUP_METHOD_LABELS_CN <- c(
 ensure_model_labels <- function(models) {
   missing <- setdiff(models, names(MODEL_LABELS_CN))
   if (length(missing) > 0) {
-    stop("缺少模型中文映射: ", paste(missing, collapse = ", "))
+    stop("缺少模型中文映射: ", paste(missing, collapse = ", "), "。请在 MODEL_LABELS_CN 中添加对应映射。")
   }
 }
 

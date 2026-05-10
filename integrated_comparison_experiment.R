@@ -91,9 +91,9 @@ sanitize_track_slug <- function(track_name) {
   if (slug == "") {
     codepoints <- utf8ToInt(track_name)
     codepoint_suffix <- paste(length(codepoints), paste(codepoints, collapse = "_"), sep = "_")
-    # 当轨道名称仅含特殊字符时，使用未命名轨道前缀并保留 codepoints 便于排查
+    # 当轨道名称仅含特殊字符时，使用特殊字符轨道前缀并保留 codepoints 便于排查
     # 使用完整 codepoint 序列作为唯一标识，确保不同纯特殊字符轨道仍能区分
-    slug <- paste0("未命名轨道_", codepoint_suffix)
+    slug <- paste0("特殊字符轨道_", codepoint_suffix)
   }
   slug
 }
