@@ -57,7 +57,7 @@ HYBRID_B_SEED_OFFSET <- 900
 HYBRID_C_SEED_OFFSET <- 1100
 EPSILON_DENOMINATOR <- 1e-8
 MIN_CI_WIDTH_DENOMINATOR <- 1e-10
-DEFAULT_TRACK_ORDER <- c("Simulation", "Empirical")
+DEFAULT_TRACK_ORDER <- c("Simulation", "Empirical") # Must match track values in results
 
 # 将 track 名称转换为适合文件名的安全小写后缀 / Convert track names to filename-safe lowercase slugs
 # track_name: 轨道名称字符；返回值为文件名友好的 slug / track_name: input track label; returns a filename-safe slug
@@ -65,11 +65,22 @@ sanitize_track_slug <- function(track_name) {
   slug <- tolower(track_name)
   slug <- gsub("[^a-z0-9]+", "_", slug)
   slug <- gsub("^_+|_+$", "", slug)
-  if (slug == "") slug <- "unnamed_track"
+  if (slug == "") {
+    name_hash <- sum(utf8ToInt(track_name))
+    slug <- paste0("unnamed_track_", name_hash)
+  }
   slug
 }
 
-has_rows <- function(df) nrow(df) > 0
+ensure_plot_data <- function(df, plot_label, track_name = NULL) {
+  if (nrow(df) > 0) return(TRUE)
+  if (is.null(track_name)) {
+    warning(paste0(plot_label, " skipped: no data."), call. = FALSE)
+  } else {
+    warning(paste0(plot_label, " skipped for track '", track_name, "': no data."), call. = FALSE)
+  }
+  FALSE
+}
 
 downsample_history <- function(history_vec, max_points = MAX_CONVERGENCE_POINTS) {
   round(seq(1, length(history_vec), length.out = min(max_points, length(history_vec))))
@@ -696,7 +707,7 @@ plot_pareto <- function(summary_df, out_file, track_name = NULL) {
     title_text <- paste0(title_text, " - ", track_name)
     facet_layer <- NULL
   }
-  if (!has_rows(plot_df)) return(invisible(NULL))
+  if (!ensure_plot_data(plot_df, "plot_pareto", track_name)) return(invisible(NULL))
   p <- ggplot2::ggplot(plot_df, ggplot2::aes(x = mean_runtime_sec, y = mean_abs_error_coef, color = category, shape = method)) +
     ggplot2::geom_point(size = 3.2, alpha = 0.9)
   if (!is.null(facet_layer)) {
@@ -723,7 +734,7 @@ plot_coverage_width <- function(summary_df, out_file, track_name = NULL) {
     title_text <- paste0(title_text, " - ", track_name)
     facet_layer <- NULL
   }
-  if (!has_rows(plot_df)) return(invisible(NULL))
+  if (!ensure_plot_data(plot_df, "plot_coverage_width", track_name)) return(invisible(NULL))
   ci_width_normalizer <- pmax(max(plot_df$mean_ci_width_coef, na.rm = TRUE), MIN_CI_WIDTH_DENOMINATOR)
   p <- ggplot2::ggplot(plot_df, ggplot2::aes(x = reorder(paste(method, config_id, sep = "_"), mean_ci_cover_coef), y = mean_ci_cover_coef, fill = category)) +
     ggplot2::geom_col(alpha = 0.85) +
@@ -747,7 +758,7 @@ plot_convergence <- function(convergence_df, out_file, track_name = NULL) {
     title_text <- paste0(title_text, " - ", track_name)
     facet_layer <- NULL
   }
-  if (!has_rows(plot_df)) return(invisible(NULL))
+  if (!ensure_plot_data(plot_df, "plot_convergence", track_name)) return(invisible(NULL))
   p <- ggplot2::ggplot(plot_df, ggplot2::aes(x = iteration, y = loss, color = method)) +
     ggplot2::geom_line(alpha = 0.85, linewidth = 0.8)
   if (!is.null(facet_layer)) {
@@ -767,7 +778,7 @@ plot_radar <- function(summary_df, out_file, track_name = NULL) {
     plot_df <- dplyr::filter(plot_df, track == track_name)
     title_text <- paste0(title_text, " - ", track_name)
   }
-  if (!has_rows(plot_df)) return(invisible(NULL))
+  if (!ensure_plot_data(plot_df, "plot_radar", track_name)) return(invisible(NULL))
   top_methods <- plot_df |>
     dplyr::group_by(track, category) |>
     dplyr::slice_min(order_by = mean_abs_error_coef, n = 1, with_ties = FALSE) |>
@@ -883,6 +894,10 @@ run_integrated_comparison <- function(
   plot_convergence(all_convergence, file.path(output_dir, paste0(run_tag, "_fig_convergence.png")))
   plot_radar(summary_table, file.path(output_dir, paste0(run_tag, "_fig_radar.png")))
 
+  missing_tracks <- setdiff(track_order, unique(summary_table$track))
+  if (length(missing_tracks) > 0) {
+    warning("track_order contains unknown tracks: ", paste(missing_tracks, collapse = ", "), call. = FALSE)
+  }
   # 先按 track_order 指定顺序排列，再将未包含的轨道追加在末尾 / Prioritize track_order, then append any remaining tracks
   tracks <- unique(summary_table$track)
   tracks <- c(intersect(track_order, tracks), setdiff(tracks, track_order))
