@@ -38,12 +38,13 @@ dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
 # 表1：模型性能对比
 model_data <- data.frame(
-  模型 = c("GAM", "多项式", "OLS", "岭回归", "部分线性", "核回归"),
+  模型 = c("广义加性模型", "多项式回归", "普通最小二乘", "岭回归", "部分线性模型", "核回归"),
   计算时间 = c(0.0015, 0.0009, 0.0011, 0.1316, 0.0356, 0.0932),
   MSE = c(0.9878, 0.9911, 0.9962, 0.9962, 1.3812, 2.8258),
   R2 = c(0.7213, 0.7204, 0.719, 0.719, 0.6103, 0.2028),
   stringsAsFactors = FALSE
 )
+# 模型顺序对应原始缩写：GAM/多项式回归/OLS/岭回归/部分线性/核回归
 
 # 表2：分布式计算
 dist_data <- data.frame(
@@ -75,16 +76,16 @@ plot_fig1_compute_time <- function() {
     geom_bar(stat = "identity", color = "black", linewidth = 0.5) +
     geom_text(aes(label = sprintf("%.4f", 计算时间)), vjust = -0.5, size = 3.5) +
     scale_y_log10() +
-    scale_fill_manual(values = c("GAM" = "#4472C4", "多项式" = "#ED7D31", 
-                                  "OLS" = "#A5A5A5", "岭回归" = "#FFC000",
-                                  "部分线性" = "#5B9BD5", "核回归" = "#70AD47")) +
+    scale_fill_manual(values = c("广义加性模型" = "#4472C4", "多项式回归" = "#ED7D31", 
+                                  "普通最小二乘" = "#A5A5A5", "岭回归" = "#FFC000",
+                                  "部分线性模型" = "#5B9BD5", "核回归" = "#70AD47")) +
     labs(x = "模型", y = "计算时间（秒）") +
     theme_minimal(base_size = 12) +
     theme(legend.position = "none",
           axis.text.x = element_text(size = 11),
           axis.title = element_text(size = 12, face = "bold"))
 
-  ggsave(file.path(output_dir, "fig1_compute_time_r.svg"), p, width = 10, height = 6, dpi = 300)
+  ggsave(file.path(output_dir, "图1_计算时间对比.svg"), p, width = 10, height = 6, dpi = 300)
   return(p)
 }
 
@@ -93,16 +94,16 @@ plot_fig2_mse_comparison <- function() {
   p <- ggplot(model_data, aes(x = 模型, y = MSE, fill = 模型)) +
     geom_bar(stat = "identity", color = "black", linewidth = 0.5) +
     geom_text(aes(label = sprintf("%.4f", MSE)), vjust = -0.5, size = 3.5) +
-    scale_fill_manual(values = c("GAM" = "#4472C4", "多项式" = "#ED7D31", 
-                                  "OLS" = "#A5A5A5", "岭回归" = "#FFC000",
-                                  "部分线性" = "#5B9BD5", "核回归" = "#70AD47")) +
+    scale_fill_manual(values = c("广义加性模型" = "#4472C4", "多项式回归" = "#ED7D31", 
+                                  "普通最小二乘" = "#A5A5A5", "岭回归" = "#FFC000",
+                                  "部分线性模型" = "#5B9BD5", "核回归" = "#70AD47")) +
     labs(x = "模型", y = "均方误差（MSE）") +
     theme_minimal(base_size = 12) +
     theme(legend.position = "none",
           axis.text.x = element_text(size = 11),
           axis.title = element_text(size = 12, face = "bold"))
 
-  ggsave(file.path(output_dir, "fig2_mse_comparison_r.svg"), p, width = 10, height = 6, dpi = 300)
+  ggsave(file.path(output_dir, "图2_MSE对比.svg"), p, width = 10, height = 6, dpi = 300)
   return(p)
 }
 
@@ -127,7 +128,7 @@ plot_fig3_speedup <- function() {
           legend.title = element_blank(),
           axis.title = element_text(size = 12, face = "bold"))
 
-  ggsave(file.path(output_dir, "fig3_speedup_r.svg"), p, width = 10, height = 6, dpi = 300)
+  ggsave(file.path(output_dir, "图3_加速比曲线.svg"), p, width = 10, height = 6, dpi = 300)
   return(p)
 }
 
@@ -147,7 +148,7 @@ plot_fig4_blb_variance <- function() {
           axis.text.x = element_text(size = 10),
           axis.title = element_text(size = 12, face = "bold"))
 
-  ggsave(file.path(output_dir, "fig4_blb_variance_r.svg"), p, width = 10, height = 6, dpi = 300)
+  ggsave(file.path(output_dir, "图4_BLB方差对比.svg"), p, width = 10, height = 6, dpi = 300)
   return(p)
 }
 
@@ -162,20 +163,20 @@ plot_fig5_sgd_convergence <- function() {
   sgd_long <- data.frame(
     迭代次数 = rep(iterations, 3),
     MSE = c(mse_32, mse_128, mse_512),
-    BatchSize = rep(c("batch=32", "batch=128", "batch=512"), each = 100)
+    BatchSize = rep(c("批大小=32", "批大小=128", "批大小=512"), each = 100)
   )
 
   p <- ggplot(sgd_long, aes(x = 迭代次数, y = MSE, color = BatchSize)) +
     geom_line(linewidth = 1) +
-    scale_color_manual(values = c("batch=32" = "#4472C4", 
-                                   "batch=128" = "#ED7D31", 
-                                   "batch=512" = "#70AD47")) +
-    labs(x = "迭代次数", y = "均方误差（MSE）", color = "Batch Size") +
+    scale_color_manual(values = c("批大小=32" = "#4472C4", 
+                                   "批大小=128" = "#ED7D31", 
+                                   "批大小=512" = "#70AD47")) +
+    labs(x = "迭代次数", y = "均方误差（MSE）", color = "批大小") +
     theme_minimal(base_size = 12) +
     theme(legend.position = "right",
           axis.title = element_text(size = 12, face = "bold"))
 
-  ggsave(file.path(output_dir, "fig5_sgd_convergence_r.svg"), p, width = 10, height = 6, dpi = 300)
+  ggsave(file.path(output_dir, "图5_SGD收敛曲线.svg"), p, width = 10, height = 6, dpi = 300)
   return(p)
 }
 
@@ -197,7 +198,7 @@ plot_fig6_complexity_accuracy <- function() {
     theme(legend.position = "right",
           axis.title = element_text(size = 12, face = "bold"))
 
-  ggsave(file.path(output_dir, "fig6_complexity_accuracy_r.svg"), p, width = 12, height = 8, dpi = 300)
+  ggsave(file.path(output_dir, "图6_复杂度精度权衡.svg"), p, width = 12, height = 8, dpi = 300)
   return(p)
 }
 
@@ -238,7 +239,7 @@ create_ppt_charts <- function() {
   ppt <- ph_with(ppt, value = dml(ggobj = p6), location = ph_location_fullsize())
 
   # 保存PPT
-  print(ppt, target = file.path(output_dir, "figures_ppt_r.pptx"))
+  print(ppt, target = file.path(output_dir, "图表汇总.pptx"))
   cat("PPT文件已保存\n")
 }
 

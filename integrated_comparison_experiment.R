@@ -57,6 +57,56 @@ HYBRID_B_SEED_OFFSET <- 900
 HYBRID_C_SEED_OFFSET <- 1100
 EPSILON_DENOMINATOR <- 1e-8
 MIN_CI_WIDTH_DENOMINATOR <- 1e-10
+DEFAULT_TRACK_ORDER <- c("Simulation", "Empirical") # Must match track values set in generate_simulation_data/load_empirical_data
+TRACK_LABELS <- c(Simulation = "模拟", Empirical = "实证")
+CATEGORY_LABELS <- c(Distributed = "分布式", Subsampling = "子抽样", "Mini-batch" = "小批次", Hybrid = "综合方案")
+METHOD_LABELS <- c(
+  SAE = "SAE",
+  "One-step" = "一步估计",
+  SRS = "SRS",
+  Stratified = "分层抽样",
+  BLB = "BLB",
+  SGD = "SGD",
+  "BLB->One-step" = "BLB→一步估计",
+  "One-step->SGD" = "一步估计→SGD",
+  "Stratified-SGD->Aggregate" = "分层SGD→聚合",
+  "Hybrid_One-step->SGD" = "综合方案：一步估计→SGD"
+)
+MODE_LABELS <- c(quick = "快速", full = "完整")
+
+translate_label <- function(values, mapping) {
+  values <- as.character(values)
+  mapped <- mapping[values]
+  ifelse(is.na(mapped), values, mapped)
+}
+
+# 将 track 名称转换为适合文件名的安全小写后缀 / Convert track names to filename-safe lowercase slugs
+# track_name: 轨道名称字符串；返回值为文件名安全的 slug 字符串 / track_name: input track label; returns a filename-safe slug
+# 若 track 仅包含特殊字符，则使用 codepoints 作为回退 / Fallback to codepoints when the name contains only special characters
+sanitize_track_slug <- function(track_name) {
+  slug <- tolower(track_name)
+  # 保留字母/数字/中文字符，其他字符替换为下划线（\p{Han} 匹配汉字） / Keep letters, digits, and Han characters
+  slug <- gsub("[^[:alnum:]\\p{Han}]+", "_", slug, perl = TRUE)
+  slug <- gsub("^_+|_+$", "", slug)
+  if (slug == "") {
+    codepoints <- utf8ToInt(track_name)
+    codepoint_suffix <- paste(length(codepoints), paste(codepoints, collapse = "_"), sep = "_")
+    # 当轨道名称仅含特殊字符时，使用特殊字符轨道前缀并保留 codepoints 便于排查
+    # 使用完整 codepoint 序列作为唯一标识，确保不同纯特殊字符轨道仍能区分
+    slug <- paste0("特殊字符轨道_", codepoint_suffix)
+  }
+  slug
+}
+
+ensure_plot_data <- function(df, plot_label, track_name = NULL) {
+  if (nrow(df) > 0) return(TRUE)
+  if (is.null(track_name)) {
+    warning(paste0(plot_label, " skipped: no data."), call. = FALSE)
+  } else {
+    warning(paste0(plot_label, " skipped for track '", track_name, "': no data."), call. = FALSE)
+  }
+  FALSE
+}
 
 downsample_history <- function(history_vec, max_points = MAX_CONVERGENCE_POINTS) {
   round(seq(1, length(history_vec), length.out = min(max_points, length(history_vec))))
@@ -674,50 +724,116 @@ run_track_experiment <- function(track_name, df, feature_cols, coef_name, true_m
 # ----------------------------------------------------------------------------
 # 6) 图表输出
 # ----------------------------------------------------------------------------
-plot_pareto <- function(summary_df, out_file) {
-  p <- ggplot2::ggplot(summary_df, ggplot2::aes(x = mean_runtime_sec, y = mean_abs_error_coef, color = category, shape = method)) +
-    ggplot2::geom_point(size = 3.2, alpha = 0.9) +
-    ggplot2::facet_wrap(~track, scales = "free_x") +
+plot_pareto <- function(summary_df, out_file, track_name = NULL) {
+  plot_df <- summary_df |>
+    dplyr::mutate(
+      track_label = translate_label(track, TRACK_LABELS),
+      category_label = translate_label(category, CATEGORY_LABELS),
+      method_label = translate_label(method, METHOD_LABELS)
+    )
+  title_text <- "速度-精度帕累托对比"
+  facet_layer <- ggplot2::facet_wrap(~track_label, scales = "free_x")
+  if (!is.null(track_name)) {
+    plot_df <- dplyr::filter(plot_df, track == track_name)
+    title_text <- paste0(title_text, " - ", translate_label(track_name, TRACK_LABELS))
+    facet_layer <- NULL
+  }
+  if (!ensure_plot_data(plot_df, "plot_pareto", track_name)) return(invisible(NULL))
+  p <- ggplot2::ggplot(plot_df, ggplot2::aes(x = mean_runtime_sec, y = mean_abs_error_coef, color = category_label, shape = method_label)) +
+    ggplot2::geom_point(size = 3.2, alpha = 0.9)
+  if (!is.null(facet_layer)) {
+    p <- p + facet_layer
+  }
+  p <- p +
     ggplot2::scale_color_viridis_d(option = "C") +
     ggplot2::labs(
-      title = "Speed-Accuracy Pareto / 速度-精度帕累托对比",
-      x = "Runtime (sec) / 计算时间（秒）",
-      y = "Coef absolute error (lower is better) / 系数绝对误差（越低越好）",
-      color = "Category / 类别",
-      shape = "Method / 方法"
+      title = title_text,
+      x = "计算时间（秒）",
+      y = "系数绝对误差（越低越好）",
+      color = "类别",
+      shape = "方法"
     )
   ggplot2::ggsave(out_file, p, width = 11, height = 6, dpi = 300)
 }
 
-plot_coverage_width <- function(summary_df, out_file) {
-  ci_width_normalizer <- pmax(max(summary_df$mean_ci_width_coef, na.rm = TRUE), MIN_CI_WIDTH_DENOMINATOR)
-  p <- ggplot2::ggplot(summary_df, ggplot2::aes(x = reorder(paste(method, config_id, sep = "_"), mean_ci_cover_coef), y = mean_ci_cover_coef, fill = category)) +
+plot_coverage_width <- function(summary_df, out_file, track_name = NULL) {
+  plot_df <- summary_df |>
+    dplyr::mutate(
+      track_label = translate_label(track, TRACK_LABELS),
+      category_label = translate_label(category, CATEGORY_LABELS),
+      method_label = translate_label(method, METHOD_LABELS)
+    )
+  title_text <- "覆盖率与区间宽度对比"
+  facet_layer <- ggplot2::facet_wrap(~track_label)
+  if (!is.null(track_name)) {
+    plot_df <- dplyr::filter(plot_df, track == track_name)
+    title_text <- paste0(title_text, " - ", translate_label(track_name, TRACK_LABELS))
+    facet_layer <- NULL
+  }
+  if (!ensure_plot_data(plot_df, "plot_coverage_width", track_name)) return(invisible(NULL))
+  ci_width_normalizer <- pmax(max(plot_df$mean_ci_width_coef, na.rm = TRUE), MIN_CI_WIDTH_DENOMINATOR)
+  p <- ggplot2::ggplot(
+    plot_df,
+    ggplot2::aes(
+      x = reorder(paste(method_label, config_id, sep = "_"), mean_ci_cover_coef),
+      y = mean_ci_cover_coef,
+      fill = category_label
+    )
+  ) +
     ggplot2::geom_col(alpha = 0.85) +
     ggplot2::geom_point(ggplot2::aes(y = pmin(1, mean_ci_width_coef / ci_width_normalizer)), color = "black", size = 1.8) +
-    ggplot2::coord_flip() +
-    ggplot2::facet_wrap(~track) +
+    ggplot2::coord_flip()
+  if (!is.null(facet_layer)) {
+    p <- p + facet_layer
+  }
+  p <- p +
     ggplot2::scale_fill_viridis_d(option = "D") +
-    ggplot2::labs(title = "覆盖率与区间宽度对比", x = "方法配置", y = "覆盖率（黑点为归一化区间宽度）", fill = "类别")
+    ggplot2::labs(title = title_text, x = "方法配置", y = "覆盖率（黑点为归一化区间宽度）", fill = "类别")
   ggplot2::ggsave(out_file, p, width = 12, height = 7, dpi = 300)
 }
 
-plot_convergence <- function(convergence_df, out_file) {
-  if (nrow(convergence_df) == 0) return(invisible(NULL))
-  p <- ggplot2::ggplot(convergence_df, ggplot2::aes(x = iteration, y = loss, color = method)) +
-    ggplot2::geom_line(alpha = 0.85, linewidth = 0.8) +
-    ggplot2::facet_wrap(~track, scales = "free") +
+plot_convergence <- function(convergence_df, out_file, track_name = NULL) {
+  plot_df <- convergence_df |>
+    dplyr::mutate(
+      track_label = translate_label(track, TRACK_LABELS),
+      method_label = translate_label(method, METHOD_LABELS)
+    )
+  title_text <- "小批次/综合方案收敛曲线"
+  facet_layer <- ggplot2::facet_wrap(~track_label, scales = "free")
+  if (!is.null(track_name)) {
+    plot_df <- dplyr::filter(plot_df, track == track_name)
+    title_text <- paste0(title_text, " - ", translate_label(track_name, TRACK_LABELS))
+    facet_layer <- NULL
+  }
+  if (!ensure_plot_data(plot_df, "plot_convergence", track_name)) return(invisible(NULL))
+  p <- ggplot2::ggplot(plot_df, ggplot2::aes(x = iteration, y = loss, color = method_label)) +
+    ggplot2::geom_line(alpha = 0.85, linewidth = 0.8)
+  if (!is.null(facet_layer)) {
+    p <- p + facet_layer
+  }
+  p <- p +
     ggplot2::scale_y_log10() +
     ggplot2::scale_color_viridis_d(option = "B") +
-    ggplot2::labs(title = "小批次/综合方案收敛曲线", x = "迭代次数", y = "损失（MSE，对数）", color = "方法")
+    ggplot2::labs(title = title_text, x = "迭代次数", y = "损失（MSE，对数）", color = "方法")
   ggplot2::ggsave(out_file, p, width = 11, height = 6, dpi = 300)
 }
 
-plot_radar <- function(summary_df, out_file) {
-  top_methods <- summary_df |>
+plot_radar <- function(summary_df, out_file, track_name = NULL) {
+  plot_df <- summary_df
+  title_text <- "方法雷达图（各类别最优配置）"
+  if (!is.null(track_name)) {
+    plot_df <- dplyr::filter(plot_df, track == track_name)
+    title_text <- paste0(title_text, " - ", translate_label(track_name, TRACK_LABELS))
+  }
+  if (!ensure_plot_data(plot_df, "plot_radar", track_name)) return(invisible(NULL))
+  top_methods <- plot_df |>
     dplyr::group_by(track, category) |>
     dplyr::slice_min(order_by = mean_abs_error_coef, n = 1, with_ties = FALSE) |>
     dplyr::ungroup() |>
     dplyr::mutate(
+      track_label = translate_label(track, TRACK_LABELS),
+      category_label = translate_label(category, CATEGORY_LABELS),
+      method_label = translate_label(method, METHOD_LABELS),
       accuracy = scales::rescale(-mean_abs_error_coef, to = c(0, 1)),
       efficiency = scales::rescale(-mean_runtime_sec, to = c(0, 1)),
       stability = scales::rescale(-stability_coef_sd, to = c(0, 1)),
@@ -730,12 +846,15 @@ plot_radar <- function(summary_df, out_file) {
     dplyr::mutate(
       metric = dplyr::recode(
         metric,
-        accuracy = "Accuracy / 精度",
-        efficiency = "Efficiency / 效率",
-        stability = "Stability / 稳定性",
-        coverage = "Coverage / 覆盖率"
+        accuracy = "精度",
+        efficiency = "效率",
+        stability = "稳定性",
+        coverage = "覆盖率"
       ),
-      label = paste(track, category, method, config_id, sep = " | ")
+      track_label = translate_label(track, TRACK_LABELS),
+      category_label = translate_label(category, CATEGORY_LABELS),
+      method_label = translate_label(method, METHOD_LABELS),
+      label = paste(track_label, category_label, method_label, config_id, sep = " | ")
     )
 
   p <- ggplot2::ggplot(radar_long, ggplot2::aes(x = metric, y = score, group = label, color = label)) +
@@ -743,7 +862,7 @@ plot_radar <- function(summary_df, out_file) {
     ggplot2::geom_point(size = 1.8) +
     ggplot2::coord_polar() +
     ggplot2::scale_color_viridis_d(option = "A") +
-    ggplot2::labs(title = "方法雷达图（各类别最优配置）", x = NULL, y = NULL, color = "方法配置") +
+    ggplot2::labs(title = title_text, x = NULL, y = NULL, color = "方法配置") +
     ggplot2::theme(axis.text.y = ggplot2::element_blank())
   ggplot2::ggsave(out_file, p, width = 10, height = 8, dpi = 300)
 }
@@ -755,7 +874,8 @@ run_integrated_comparison <- function(
     mode = c("quick", "full"),
     output_dir = file.path(getwd(), "output", "unified_comparison"),
     empirical_path = file.path(getwd(), "data", "yellow_tripdata_2023-01.parquet"),
-    seed = 20260417
+    seed = 20260417,
+    track_order = DEFAULT_TRACK_ORDER
 ) {
   mode <- match.arg(mode)
   set.seed(seed)
@@ -768,7 +888,9 @@ run_integrated_comparison <- function(
 
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
   timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
-  run_tag <- paste0("integrated_", mode, "_", timestamp)
+  # 使用中文 run_tag，并保留下划线分隔以提升跨平台兼容性和可读性
+  mode_label <- translate_label(mode, MODE_LABELS)
+  run_tag <- paste0("综合对比_", mode_label, "_", timestamp)
 
   # 模拟主线
   sim_df <- generate_simulation_data(
@@ -797,6 +919,17 @@ run_integrated_comparison <- function(
   summary_table <- summarize_method_results(all_results)
   budget_table <- compute_budget_views(summary_table)
 
+  missing_default_tracks <- setdiff(DEFAULT_TRACK_ORDER, unique(summary_table$track))
+  if (length(missing_default_tracks) > 0) {
+    warning("DEFAULT_TRACK_ORDER tracks not found in results: ", paste(missing_default_tracks, collapse = ", "), call. = FALSE)
+  }
+
+  unknown_tracks <- setdiff(track_order, unique(summary_table$track))
+  if (length(unknown_tracks) > 0) {
+    # 非致命提示，允许继续执行 / Non-fatal warning to keep the run going
+    warning("track_order contains unknown tracks: ", paste(unknown_tracks, collapse = ", "), call. = FALSE)
+  }
+
   # 参数敏感性：聚焦可调参数方法
   sensitivity_table <- summary_table |>
     dplyr::filter(grepl("K|frac|g|bs", config_id)) |>
@@ -815,17 +948,29 @@ run_integrated_comparison <- function(
     dplyr::select(track, method, config_id, error_gain_pct, runtime_gain_pct, cover_gain, ref_method, ref_config)
 
   # 输出表格
-  write.csv(all_results, file.path(output_dir, paste0(run_tag, "_raw_results.csv")), row.names = FALSE, fileEncoding = "UTF-8")
-  write.csv(summary_table, file.path(output_dir, paste0(run_tag, "_table_overall_accuracy_efficiency_stability.csv")), row.names = FALSE, fileEncoding = "UTF-8")
-  write.csv(sensitivity_table, file.path(output_dir, paste0(run_tag, "_table_parameter_sensitivity.csv")), row.names = FALSE, fileEncoding = "UTF-8")
-  write.csv(hybrid_gain, file.path(output_dir, paste0(run_tag, "_table_hybrid_gain.csv")), row.names = FALSE, fileEncoding = "UTF-8")
-  write.csv(budget_table, file.path(output_dir, paste0(run_tag, "_table_budget_views.csv")), row.names = FALSE, fileEncoding = "UTF-8")
+  write.csv(all_results, file.path(output_dir, paste0(run_tag, "_原始结果.csv")), row.names = FALSE, fileEncoding = "UTF-8")
+  write.csv(summary_table, file.path(output_dir, paste0(run_tag, "_总体精度效率稳定性表.csv")), row.names = FALSE, fileEncoding = "UTF-8")
+  write.csv(sensitivity_table, file.path(output_dir, paste0(run_tag, "_参数敏感性表.csv")), row.names = FALSE, fileEncoding = "UTF-8")
+  write.csv(hybrid_gain, file.path(output_dir, paste0(run_tag, "_综合收益表.csv")), row.names = FALSE, fileEncoding = "UTF-8")
+  write.csv(budget_table, file.path(output_dir, paste0(run_tag, "_预算视角总表.csv")), row.names = FALSE, fileEncoding = "UTF-8")
 
   # 输出图形
-  plot_pareto(summary_table, file.path(output_dir, paste0(run_tag, "_fig_speed_accuracy_pareto.png")))
-  plot_coverage_width(summary_table, file.path(output_dir, paste0(run_tag, "_fig_coverage_width.png")))
-  plot_convergence(all_convergence, file.path(output_dir, paste0(run_tag, "_fig_convergence.png")))
-  plot_radar(summary_table, file.path(output_dir, paste0(run_tag, "_fig_radar.png")))
+  plot_pareto(summary_table, file.path(output_dir, paste0(run_tag, "_速度精度帕累托图.png")))
+  plot_coverage_width(summary_table, file.path(output_dir, paste0(run_tag, "_覆盖率区间宽度.png")))
+  plot_convergence(all_convergence, file.path(output_dir, paste0(run_tag, "_收敛曲线.png")))
+  plot_radar(summary_table, file.path(output_dir, paste0(run_tag, "_雷达图.png")))
+
+  # 先按 track_order 指定顺序排列，再将未包含的轨道追加在末尾 / Prioritize track_order, then append any remaining tracks
+  tracks <- unique(summary_table$track)
+  tracks <- c(intersect(track_order, tracks), setdiff(tracks, track_order))
+  for (track_name in tracks) {
+    track_label <- translate_label(track_name, TRACK_LABELS)
+    track_slug <- sanitize_track_slug(track_label)
+    plot_pareto(summary_table, file.path(output_dir, paste0(run_tag, "_速度精度帕累托图_", track_slug, ".png")), track_name)
+    plot_coverage_width(summary_table, file.path(output_dir, paste0(run_tag, "_覆盖率区间宽度_", track_slug, ".png")), track_name)
+    plot_convergence(all_convergence, file.path(output_dir, paste0(run_tag, "_收敛曲线_", track_slug, ".png")), track_name)
+    plot_radar(summary_table, file.path(output_dir, paste0(run_tag, "_雷达图_", track_slug, ".png")), track_name)
+  }
 
   # 日志
   log_lines <- c(
@@ -840,7 +985,7 @@ run_integrated_comparison <- function(
     paste("methods_count:", length(unique(paste(all_results$category, all_results$method, all_results$config_id)))),
     paste("output_dir:", output_dir)
   )
-  writeLines(log_lines, con = file.path(output_dir, paste0(run_tag, "_run.log")))
+  writeLines(log_lines, con = file.path(output_dir, paste0(run_tag, "_运行日志.log")))
 
   message("实验完成，输出目录：", output_dir)
   invisible(list(
