@@ -80,7 +80,7 @@ translate_label <- function(values, mapping) {
 }
 
 # 将 track 名称转换为适合文件名的安全小写后缀 / Convert track names to filename-safe lowercase slugs
-# track_name: 轨道名称字符；返回值为文件名友好的 slug / track_name: input track label; returns a filename-safe slug
+# track_name: 轨道名称字符串；返回值为文件名安全的 slug 字符串 / track_name: input track label; returns a filename-safe slug
 # 若 track 仅包含特殊字符，则使用 codepoints 作为回退 / Fallback to codepoints when the name contains only special characters
 sanitize_track_slug <- function(track_name) {
   slug <- tolower(track_name)
@@ -887,7 +887,7 @@ run_integrated_comparison <- function(
 
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
   timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
-  # 使用中文 run_tag，并保留下划线分隔以提升跨平台可读性
+  # 使用中文 run_tag，并保留下划线分隔以提升跨平台兼容性和可读性
   mode_label <- ifelse(mode == "quick", "快速", "完整")
   run_tag <- paste0("综合对比_", mode_label, "_", timestamp)
 

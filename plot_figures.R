@@ -44,6 +44,7 @@ model_data <- data.frame(
   R2 = c(0.7213, 0.7204, 0.719, 0.719, 0.6103, 0.2028),
   stringsAsFactors = FALSE
 )
+# 顺序对应原始 GAM/多项式/OLS/岭回归/部分线性/核回归
 
 # 表2：分布式计算
 dist_data <- data.frame(

@@ -74,6 +74,15 @@ theme_cn <- function(base_size = 12) {
     theme(text = element_text(family = plot_font_family))
 }
 
+MODEL_LABELS_CN <- c(
+  OLS = "普通最小二乘",
+  Polynomial = "多项式回归",
+  Ridge = "岭回归",
+  GAM = "广义加性模型",
+  Kernel = "核回归",
+  Partial_Linear = "部分线性模型"
+)
+
 # 统一保存图表：支持SVG（可编辑矢量）
 save_plot_editable <- function(plot_obj, output_file, width = 10, height = 7, dpi = 300) {
   ext <- tolower(tools::file_ext(output_file))
@@ -986,15 +995,6 @@ plot_compute_time <- function(results_list, output_file = NULL) {
     levels = sort(unique(plot_data$SampleSize))
   )
 
-  model_labels <- c(
-    OLS = "普通最小二乘",
-    Polynomial = "多项式回归",
-    Ridge = "岭回归",
-    GAM = "广义加性模型",
-    Kernel = "核回归",
-    Partial_Linear = "部分线性模型"
-  )
-
   p <- ggplot2::ggplot(plot_data, ggplot2::aes(x = SampleSize, y = Time, fill = Model)) +
     ggplot2::geom_bar(stat = "identity", position = "dodge") +
     ggplot2::scale_y_log10() +
@@ -1008,7 +1008,7 @@ plot_compute_time <- function(results_list, output_file = NULL) {
       axis.text.x = ggplot2::element_text(angle = 0),
       legend.position = "bottom"
     ) +
-    ggplot2::scale_fill_viridis_d(labels = model_labels)
+    ggplot2::scale_fill_viridis_d(labels = MODEL_LABELS_CN)
 
   if (!is.null(output_file)) {
     save_plot_editable(p, output_file, width = 10, height = 7, dpi = 300)
@@ -1041,20 +1041,11 @@ plot_mse_comparison <- function(results, output_file = NULL) {
     }
   }
 
-  model_labels <- c(
-    OLS = "普通最小二乘",
-    Polynomial = "多项式回归",
-    Ridge = "岭回归",
-    GAM = "广义加性模型",
-    Kernel = "核回归",
-    Partial_Linear = "部分线性模型"
-  )
-
   # 按MSE排序
-  plot_data$ModelLabel <- model_labels[plot_data$Model]
+  plot_data$ModelLabel <- MODEL_LABELS_CN[plot_data$Model]
   plot_data$ModelLabel <- factor(
     plot_data$ModelLabel,
-    levels = model_labels[plot_data$Model[order(plot_data$MSE)]]
+    levels = MODEL_LABELS_CN[plot_data$Model[order(plot_data$MSE)]]
   )
 
   p <- ggplot(plot_data, aes(x = ModelLabel, y = MSE, fill = ModelLabel)) +
@@ -1314,15 +1305,7 @@ plot_complexity_accuracy <- function(results, output_file = NULL) {
     }
   }
 
-  model_labels <- c(
-    OLS = "普通最小二乘",
-    Polynomial = "多项式回归",
-    Ridge = "岭回归",
-    GAM = "广义加性模型",
-    Kernel = "核回归",
-    Partial_Linear = "部分线性模型"
-  )
-  plot_data$ModelLabel <- model_labels[plot_data$Model]
+  plot_data$ModelLabel <- MODEL_LABELS_CN[plot_data$Model]
 
   p <- ggplot(plot_data, aes(x = Complexity, y = MSE, size = Time, color = ModelLabel)) +
     geom_point(alpha = 0.7) +
