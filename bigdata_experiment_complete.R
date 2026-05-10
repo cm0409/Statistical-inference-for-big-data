@@ -791,7 +791,7 @@ compare_blb <- function(X, y, gamma_values = c(0.6, 0.7),
   results <- list()
 
   # 基准：完整bootstrap
-  cat("计算完整Bootstrap基准...\n")
+  cat("计算完整自助法基准...\n")
   n <- nrow(X)
   B_full <- 1000
   boot_estimates <- matrix(0, nrow = B_full, ncol = ncol(X) + 1)
