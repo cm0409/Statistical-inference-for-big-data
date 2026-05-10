@@ -6,10 +6,10 @@
 
 - `bigdata_experiment_complete.R`
   综合实验主脚本（SAE/One-step、BLB、SGD、图表与表格）
-- `simulation.R`
-  数值模拟实验脚本
-- `empirical_analysis.R`
-  NYC Taxi 实证分析脚本
+- `simulation.R`（已废弃）
+  数值模拟实验脚本（请使用 `integrated_comparison_experiment.R`）
+- `empirical_analysis.R`（已废弃）
+  NYC Taxi 实证分析脚本（请使用 `integrated_comparison_experiment.R`）
 - `integrated_comparison_experiment.R`
   统一横向对比与综合使用实验脚本
 
@@ -34,6 +34,7 @@
    - 综合方案收益表
    - 预算视角总表（时间/内存/样本访问）
    - 帕累托图、覆盖率-区间宽度图、收敛曲线、雷达图
+   - 分轨输出：同一 run_tag 下分别输出 Simulation/Empirical 图（文件名包含 `_simulation`/`_empirical`）
    - 运行日志
 
 ### 运行方式

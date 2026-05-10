@@ -674,13 +674,22 @@ run_track_experiment <- function(track_name, df, feature_cols, coef_name, true_m
 # ----------------------------------------------------------------------------
 # 6) 图表输出
 # ----------------------------------------------------------------------------
-plot_pareto <- function(summary_df, out_file) {
-  p <- ggplot2::ggplot(summary_df, ggplot2::aes(x = mean_runtime_sec, y = mean_abs_error_coef, color = category, shape = method)) +
+plot_pareto <- function(summary_df, out_file, track_name = NULL) {
+  plot_df <- summary_df
+  title_text <- "Speed-Accuracy Pareto / 速度-精度帕累托对比"
+  facet_layer <- ggplot2::facet_wrap(~track, scales = "free_x")
+  if (!is.null(track_name)) {
+    plot_df <- dplyr::filter(plot_df, track == track_name)
+    title_text <- paste0(title_text, " - ", track_name)
+    facet_layer <- NULL
+  }
+  if (nrow(plot_df) == 0) return(invisible(NULL))
+  p <- ggplot2::ggplot(plot_df, ggplot2::aes(x = mean_runtime_sec, y = mean_abs_error_coef, color = category, shape = method)) +
     ggplot2::geom_point(size = 3.2, alpha = 0.9) +
-    ggplot2::facet_wrap(~track, scales = "free_x") +
+    facet_layer +
     ggplot2::scale_color_viridis_d(option = "C") +
     ggplot2::labs(
-      title = "Speed-Accuracy Pareto / 速度-精度帕累托对比",
+      title = title_text,
       x = "Runtime (sec) / 计算时间（秒）",
       y = "Coef absolute error (lower is better) / 系数绝对误差（越低越好）",
       color = "Category / 类别",
@@ -689,31 +698,55 @@ plot_pareto <- function(summary_df, out_file) {
   ggplot2::ggsave(out_file, p, width = 11, height = 6, dpi = 300)
 }
 
-plot_coverage_width <- function(summary_df, out_file) {
-  ci_width_normalizer <- pmax(max(summary_df$mean_ci_width_coef, na.rm = TRUE), MIN_CI_WIDTH_DENOMINATOR)
-  p <- ggplot2::ggplot(summary_df, ggplot2::aes(x = reorder(paste(method, config_id, sep = "_"), mean_ci_cover_coef), y = mean_ci_cover_coef, fill = category)) +
+plot_coverage_width <- function(summary_df, out_file, track_name = NULL) {
+  plot_df <- summary_df
+  title_text <- "覆盖率与区间宽度对比"
+  facet_layer <- ggplot2::facet_wrap(~track)
+  if (!is.null(track_name)) {
+    plot_df <- dplyr::filter(plot_df, track == track_name)
+    title_text <- paste0(title_text, " - ", track_name)
+    facet_layer <- NULL
+  }
+  if (nrow(plot_df) == 0) return(invisible(NULL))
+  ci_width_normalizer <- pmax(max(plot_df$mean_ci_width_coef, na.rm = TRUE), MIN_CI_WIDTH_DENOMINATOR)
+  p <- ggplot2::ggplot(plot_df, ggplot2::aes(x = reorder(paste(method, config_id, sep = "_"), mean_ci_cover_coef), y = mean_ci_cover_coef, fill = category)) +
     ggplot2::geom_col(alpha = 0.85) +
     ggplot2::geom_point(ggplot2::aes(y = pmin(1, mean_ci_width_coef / ci_width_normalizer)), color = "black", size = 1.8) +
     ggplot2::coord_flip() +
-    ggplot2::facet_wrap(~track) +
+    facet_layer +
     ggplot2::scale_fill_viridis_d(option = "D") +
-    ggplot2::labs(title = "覆盖率与区间宽度对比", x = "方法配置", y = "覆盖率（黑点为归一化区间宽度）", fill = "类别")
+    ggplot2::labs(title = title_text, x = "方法配置", y = "覆盖率（黑点为归一化区间宽度）", fill = "类别")
   ggplot2::ggsave(out_file, p, width = 12, height = 7, dpi = 300)
 }
 
-plot_convergence <- function(convergence_df, out_file) {
-  if (nrow(convergence_df) == 0) return(invisible(NULL))
-  p <- ggplot2::ggplot(convergence_df, ggplot2::aes(x = iteration, y = loss, color = method)) +
+plot_convergence <- function(convergence_df, out_file, track_name = NULL) {
+  plot_df <- convergence_df
+  title_text <- "小批次/综合方案收敛曲线"
+  facet_layer <- ggplot2::facet_wrap(~track, scales = "free")
+  if (!is.null(track_name)) {
+    plot_df <- dplyr::filter(plot_df, track == track_name)
+    title_text <- paste0(title_text, " - ", track_name)
+    facet_layer <- NULL
+  }
+  if (nrow(plot_df) == 0) return(invisible(NULL))
+  p <- ggplot2::ggplot(plot_df, ggplot2::aes(x = iteration, y = loss, color = method)) +
     ggplot2::geom_line(alpha = 0.85, linewidth = 0.8) +
-    ggplot2::facet_wrap(~track, scales = "free") +
+    facet_layer +
     ggplot2::scale_y_log10() +
     ggplot2::scale_color_viridis_d(option = "B") +
-    ggplot2::labs(title = "小批次/综合方案收敛曲线", x = "迭代次数", y = "损失（MSE，对数）", color = "方法")
+    ggplot2::labs(title = title_text, x = "迭代次数", y = "损失（MSE，对数）", color = "方法")
   ggplot2::ggsave(out_file, p, width = 11, height = 6, dpi = 300)
 }
 
-plot_radar <- function(summary_df, out_file) {
-  top_methods <- summary_df |>
+plot_radar <- function(summary_df, out_file, track_name = NULL) {
+  plot_df <- summary_df
+  title_text <- "方法雷达图（各类别最优配置）"
+  if (!is.null(track_name)) {
+    plot_df <- dplyr::filter(plot_df, track == track_name)
+    title_text <- paste0(title_text, " - ", track_name)
+  }
+  if (nrow(plot_df) == 0) return(invisible(NULL))
+  top_methods <- plot_df |>
     dplyr::group_by(track, category) |>
     dplyr::slice_min(order_by = mean_abs_error_coef, n = 1, with_ties = FALSE) |>
     dplyr::ungroup() |>
@@ -743,7 +776,7 @@ plot_radar <- function(summary_df, out_file) {
     ggplot2::geom_point(size = 1.8) +
     ggplot2::coord_polar() +
     ggplot2::scale_color_viridis_d(option = "A") +
-    ggplot2::labs(title = "方法雷达图（各类别最优配置）", x = NULL, y = NULL, color = "方法配置") +
+    ggplot2::labs(title = title_text, x = NULL, y = NULL, color = "方法配置") +
     ggplot2::theme(axis.text.y = ggplot2::element_blank())
   ggplot2::ggsave(out_file, p, width = 10, height = 8, dpi = 300)
 }
@@ -826,6 +859,17 @@ run_integrated_comparison <- function(
   plot_coverage_width(summary_table, file.path(output_dir, paste0(run_tag, "_fig_coverage_width.png")))
   plot_convergence(all_convergence, file.path(output_dir, paste0(run_tag, "_fig_convergence.png")))
   plot_radar(summary_table, file.path(output_dir, paste0(run_tag, "_fig_radar.png")))
+
+  track_order <- c("Simulation", "Empirical")
+  tracks <- track_order[track_order %in% unique(summary_table$track)]
+  tracks <- c(tracks, setdiff(unique(summary_table$track), tracks))
+  for (track_name in tracks) {
+    track_slug <- tolower(track_name)
+    plot_pareto(summary_table, file.path(output_dir, paste0(run_tag, "_fig_speed_accuracy_pareto_", track_slug, ".png")), track_name)
+    plot_coverage_width(summary_table, file.path(output_dir, paste0(run_tag, "_fig_coverage_width_", track_slug, ".png")), track_name)
+    plot_convergence(all_convergence, file.path(output_dir, paste0(run_tag, "_fig_convergence_", track_slug, ".png")), track_name)
+    plot_radar(summary_table, file.path(output_dir, paste0(run_tag, "_fig_radar_", track_slug, ".png")), track_name)
+  }
 
   # 日志
   log_lines <- c(
