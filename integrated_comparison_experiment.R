@@ -85,7 +85,7 @@ translate_label <- function(values, mapping) {
 # 若 track 仅包含特殊字符，则使用 codepoints 作为回退 / Fallback to codepoints when the name contains only special characters
 sanitize_track_slug <- function(track_name) {
   slug <- tolower(track_name)
-  # 保留字母/数字/中文字符，其他字符替换为下划线（\p{Han} 含中日韩文字） / Keep letters, digits, and Han characters
+  # 保留字母/数字/中文字符，其他字符替换为下划线（\p{Han} 匹配汉字） / Keep letters, digits, and Han characters
   slug <- gsub("[^[:alnum:]\\p{Han}]+", "_", slug, perl = TRUE)
   slug <- gsub("^_+|_+$", "", slug)
   if (slug == "") {
@@ -918,6 +918,11 @@ run_integrated_comparison <- function(
   all_convergence <- dplyr::bind_rows(sim_track$convergence, emp_track$convergence)
   summary_table <- summarize_method_results(all_results)
   budget_table <- compute_budget_views(summary_table)
+
+  missing_default_tracks <- setdiff(DEFAULT_TRACK_ORDER, unique(summary_table$track))
+  if (length(missing_default_tracks) > 0) {
+    warning("DEFAULT_TRACK_ORDER tracks not found in results: ", paste(missing_default_tracks, collapse = ", "), call. = FALSE)
+  }
 
   unknown_tracks <- setdiff(track_order, unique(summary_table$track))
   if (length(unknown_tracks) > 0) {
