@@ -57,7 +57,7 @@ HYBRID_B_SEED_OFFSET <- 900
 HYBRID_C_SEED_OFFSET <- 1100
 EPSILON_DENOMINATOR <- 1e-8
 MIN_CI_WIDTH_DENOMINATOR <- 1e-10
-DEFAULT_TRACK_ORDER <- c("Simulation", "Empirical") # Must match track values in results
+DEFAULT_TRACK_ORDER <- c("Simulation", "Empirical") # Must match track values set in generate_simulation_data/load_empirical_data
 TRACK_LABELS <- c(Simulation = "模拟", Empirical = "实证")
 CATEGORY_LABELS <- c(Distributed = "分布式", Subsampling = "子抽样", "Mini-batch" = "小批次", Hybrid = "综合方案")
 METHOD_LABELS <- c(
@@ -90,7 +90,7 @@ sanitize_track_slug <- function(track_name) {
   if (slug == "") {
     codepoints <- utf8ToInt(track_name)
     codepoint_suffix <- paste(length(codepoints), paste(codepoints, collapse = "_"), sep = "_")
-    slug <- paste0("unnamed_track_", codepoint_suffix)
+    slug <- paste0("未命名轨道_", codepoint_suffix)
   }
   slug
 }
