@@ -66,7 +66,8 @@ sanitize_track_slug <- function(track_name) {
   slug <- gsub("[^a-z0-9]+", "_", slug)
   slug <- gsub("^_+|_+$", "", slug)
   if (slug == "") {
-    name_hash <- sum(utf8ToInt(track_name))
+    codepoints <- utf8ToInt(track_name)
+    name_hash <- paste(length(codepoints), paste(codepoints, collapse = "_"), sep = "_")
     slug <- paste0("unnamed_track_", name_hash)
   }
   slug
@@ -894,9 +895,9 @@ run_integrated_comparison <- function(
   plot_convergence(all_convergence, file.path(output_dir, paste0(run_tag, "_fig_convergence.png")))
   plot_radar(summary_table, file.path(output_dir, paste0(run_tag, "_fig_radar.png")))
 
-  missing_tracks <- setdiff(track_order, unique(summary_table$track))
-  if (length(missing_tracks) > 0) {
-    warning("track_order contains unknown tracks: ", paste(missing_tracks, collapse = ", "), call. = FALSE)
+  unknown_tracks <- setdiff(track_order, unique(summary_table$track))
+  if (length(unknown_tracks) > 0) {
+    warning("track_order contains unknown tracks: ", paste(unknown_tracks, collapse = ", "), call. = FALSE)
   }
   # 先按 track_order 指定顺序排列，再将未包含的轨道追加在末尾 / Prioritize track_order, then append any remaining tracks
   tracks <- unique(summary_table$track)
