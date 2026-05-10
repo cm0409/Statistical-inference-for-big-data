@@ -84,6 +84,7 @@ translate_label <- function(values, mapping) {
 # 若 track 仅包含特殊字符，则使用 codepoints 作为回退 / Fallback to codepoints when the name contains only special characters
 sanitize_track_slug <- function(track_name) {
   slug <- tolower(track_name)
+  # 保留字母/数字/中文字符，其他字符替换为下划线 / Keep letters, digits, and Han characters
   slug <- gsub("[^[:alnum:]\\p{Han}]+", "_", slug, perl = TRUE)
   slug <- gsub("^_+|_+$", "", slug)
   if (slug == "") {
