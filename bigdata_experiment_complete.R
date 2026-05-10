@@ -987,10 +987,10 @@ plot_compute_time <- function(results_list, output_file = NULL) {
   )
 
   model_labels <- c(
-    OLS = "OLS",
+    OLS = "普通最小二乘",
     Polynomial = "多项式回归",
     Ridge = "岭回归",
-    GAM = "GAM",
+    GAM = "广义加性模型",
     Kernel = "核回归",
     Partial_Linear = "部分线性模型"
   )
@@ -1041,11 +1041,23 @@ plot_mse_comparison <- function(results, output_file = NULL) {
     }
   }
 
-  # 按MSE排序
-  plot_data$Model <- factor(plot_data$Model, 
-                             levels = plot_data$Model[order(plot_data$MSE)])
+  model_labels <- c(
+    OLS = "普通最小二乘",
+    Polynomial = "多项式回归",
+    Ridge = "岭回归",
+    GAM = "广义加性模型",
+    Kernel = "核回归",
+    Partial_Linear = "部分线性模型"
+  )
 
-  p <- ggplot(plot_data, aes(x = Model, y = MSE, fill = Model)) +
+  # 按MSE排序
+  plot_data$ModelLabel <- model_labels[plot_data$Model]
+  plot_data$ModelLabel <- factor(
+    plot_data$ModelLabel,
+    levels = model_labels[plot_data$Model[order(plot_data$MSE)]]
+  )
+
+  p <- ggplot(plot_data, aes(x = ModelLabel, y = MSE, fill = ModelLabel)) +
     geom_bar(stat = "identity") +
     geom_text(aes(label = sprintf("%.4f", MSE)), vjust = -0.5, size = 3.5, family = plot_font_family) +
     labs(
@@ -1114,7 +1126,15 @@ plot_speedup <- function(dist_results, output_file = NULL) {
   )
   plot_data <- rbind(plot_data, ideal_data)
 
-  p <- ggplot(plot_data, aes(x = K, y = Speedup, color = Method, linetype = Method)) +
+  method_labels <- c(
+    SAE = "SAE",
+    "One-step" = "一步估计",
+    Ideal = "理想加速比"
+  )
+  plot_data$MethodLabel <- method_labels[plot_data$Method]
+  plot_data$MethodLabel <- factor(plot_data$MethodLabel, levels = method_labels[unique(plot_data$Method)])
+
+  p <- ggplot(plot_data, aes(x = K, y = Speedup, color = MethodLabel, linetype = MethodLabel)) +
     geom_line(linewidth = 1.2) +
     geom_point(size = 3) +
     geom_abline(intercept = 0, slope = 1, linetype = "dashed",
@@ -1185,7 +1205,7 @@ plot_blb_coverage <- function(blb_results, true_coef, output_file = NULL) {
     S = NA,
     Coverage = full_cov,
     CI_Width = mean(2 * 1.96 * blb_results$full_bootstrap$std_error),
-    Method = "完整Bootstrap"
+    Method = "完整自助法"
   ))
 
   p <- ggplot(plot_data, aes(x = Method, y = Coverage, fill = Method)) +
@@ -1294,9 +1314,19 @@ plot_complexity_accuracy <- function(results, output_file = NULL) {
     }
   }
 
-  p <- ggplot(plot_data, aes(x = Complexity, y = MSE, size = Time, color = Model)) +
+  model_labels <- c(
+    OLS = "普通最小二乘",
+    Polynomial = "多项式回归",
+    Ridge = "岭回归",
+    GAM = "广义加性模型",
+    Kernel = "核回归",
+    Partial_Linear = "部分线性模型"
+  )
+  plot_data$ModelLabel <- model_labels[plot_data$Model]
+
+  p <- ggplot(plot_data, aes(x = Complexity, y = MSE, size = Time, color = ModelLabel)) +
     geom_point(alpha = 0.7) +
-    geom_text(aes(label = Model), vjust = -1, size = 3.5, family = plot_font_family) +
+    geom_text(aes(label = ModelLabel), vjust = -1, size = 3.5, family = plot_font_family) +
     labs(
       x = "模型复杂度评分",
       y = "均方误差（MSE）",
@@ -1632,21 +1662,21 @@ run_full_experiment <- function(sample_sizes = c(1000, 10000, 100000),
   cat("生成图1：计算时间对比...\\n")
   fig1 <- plot_compute_time(
     all_results[as.character(sample_sizes)],
-    file.path(output_dir, "fig1_compute_time.svg")
+    file.path(output_dir, "图1_计算时间对比.svg")
   )
 
   # 图2：模型MSE对比（使用最大样本量）
   cat("生成图2：模型MSE对比...\\n")
   fig2 <- plot_mse_comparison(
     all_results[[as.character(n_large)]],
-    file.path(output_dir, "fig2_mse_comparison.svg")
+    file.path(output_dir, "图2_MSE对比.svg")
   )
 
   # 图3：分布式计算加速比
   cat("生成图3：加速比曲线...\\n")
   fig3 <- plot_speedup(
     dist_results,
-    file.path(output_dir, "fig3_speedup.svg")
+    file.path(output_dir, "图3_加速比曲线.svg")
   )
 
   # 图4：BLB覆盖率
@@ -1654,21 +1684,21 @@ run_full_experiment <- function(sample_sizes = c(1000, 10000, 100000),
   fig4 <- plot_blb_coverage(
     blb_results,
     beta_true,
-    file.path(output_dir, "fig4_blb_coverage.svg")
+    file.path(output_dir, "图4_BLB覆盖率.svg")
   )
 
   # 图5：SGD收敛曲线
   cat("生成图5：SGD收敛曲线...\\n")
   fig5 <- plot_sgd_convergence(
     sgd_results,
-    file.path(output_dir, "fig5_sgd_convergence.svg")
+    file.path(output_dir, "图5_SGD收敛曲线.svg")
   )
 
   # 图6：复杂度-精度权衡
   cat("生成图6：复杂度-精度权衡...\\n")
   fig6 <- plot_complexity_accuracy(
     all_results[[as.character(n_large)]],
-    file.path(output_dir, "fig6_complexity_accuracy.svg")
+    file.path(output_dir, "图6_复杂度精度权衡.svg")
   )
 
   # 汇总导出可编辑PPT
@@ -1681,7 +1711,7 @@ run_full_experiment <- function(sample_sizes = c(1000, 10000, 100000),
       图5_SGD收敛 = fig5,
       图6_复杂度精度权衡 = fig6
     ),
-    output_file = file.path(output_dir, "figures_editable.pptx")
+    output_file = file.path(output_dir, "图表汇总.pptx")
   )
 
   # ========================================================================
@@ -1696,24 +1726,24 @@ run_full_experiment <- function(sample_sizes = c(1000, 10000, 100000),
     cat(sprintf("生成表1-%d：模型性能对比...\\n", n))
     generate_model_comparison_table(
       all_results[[as.character(n)]], 
-      file.path(output_dir, sprintf("table1_model_comparison_n%d.csv", n))
+      file.path(output_dir, sprintf("表1_模型性能对比_n%d.csv", n))
     )
   }
 
   # 表2：分布式计算结果
   cat("生成表2：分布式计算结果...\\n")
   generate_distributed_table(dist_results, 
-                              file.path(output_dir, "table2_distributed.csv"))
+                              file.path(output_dir, "表2_分布式计算结果.csv"))
 
   # 表3：BLB结果
   cat("生成表3：BLB结果...\\n")
   generate_blb_table(blb_results, 
-                     file.path(output_dir, "table3_blb.csv"))
+                     file.path(output_dir, "表3_BLB结果.csv"))
 
   # 表4：SGD结果
   cat("生成表4：SGD结果...\\n")
   generate_sgd_table(sgd_results, 
-                     file.path(output_dir, "table4_sgd.csv"))
+                     file.path(output_dir, "表4_SGD结果.csv"))
 
   # 表5：模型选择建议
   cat("生成表5：模型选择建议...\\n")
@@ -1733,17 +1763,17 @@ run_full_experiment <- function(sample_sizes = c(1000, 10000, 100000),
   )
   write_csv_cn(
     recommendation_table,
-    file.path(output_dir, "table5_recommendations.csv")
+    file.path(output_dir, "表5_模型选择建议.csv")
   )
 
   # 三类模型综合分析表（参数/非参数/半参数）
   cat("生成表6：三类模型综合分析...\\n")
   analyze_three_model_families(
     all_results[[as.character(n_large)]],
-    file.path(output_dir, "table6_three_families_analysis.csv")
+    file.path(output_dir, "表6_三类模型综合分析.csv")
   )
 
-  cat(sprintf("表格已保存: %s\\n", file.path(output_dir, "table5_recommendations.csv")))
+  cat(sprintf("表格已保存: %s\\n", file.path(output_dir, "表5_模型选择建议.csv")))
 
   cat("\n=================================================================\n")
   cat("实验完成！所有结果已保存到: ", output_dir, "\n")
