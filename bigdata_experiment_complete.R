@@ -82,6 +82,18 @@ MODEL_LABELS_CN <- c(
   Kernel = "核回归",
   Partial_Linear = "部分线性模型"
 )
+SPEEDUP_METHOD_LABELS_CN <- c(
+  SAE = "SAE",
+  "One-step" = "一步估计",
+  Ideal = "理想加速比"
+)
+
+ensure_model_labels <- function(models) {
+  missing <- setdiff(models, names(MODEL_LABELS_CN))
+  if (length(missing) > 0) {
+    stop("缺少模型中文映射: ", paste(missing, collapse = ", "))
+  }
+}
 
 # 统一保存图表：支持SVG（可编辑矢量）
 save_plot_editable <- function(plot_obj, output_file, width = 10, height = 7, dpi = 300) {
@@ -970,6 +982,7 @@ compare_sgd <- function(X, y, batch_sizes = c(32, 64, 128, 256, 512)) {
 plot_compute_time <- function(results_list, output_file = NULL) {
   sample_sizes <- names(results_list)
   models <- c("OLS", "Polynomial", "Ridge", "GAM", "Kernel", "Partial_Linear")
+  ensure_model_labels(models)
 
   plot_data <- data.frame()
   for (size in sample_sizes) {
@@ -1042,6 +1055,7 @@ plot_mse_comparison <- function(results, output_file = NULL) {
   }
 
   # 按MSE排序
+  ensure_model_labels(plot_data$Model)
   plot_data$ModelLabel <- MODEL_LABELS_CN[plot_data$Model]
   plot_data$ModelLabel <- factor(
     plot_data$ModelLabel,
@@ -1117,13 +1131,8 @@ plot_speedup <- function(dist_results, output_file = NULL) {
   )
   plot_data <- rbind(plot_data, ideal_data)
 
-  method_labels <- c(
-    SAE = "SAE",
-    "One-step" = "一步估计",
-    Ideal = "理想加速比"
-  )
-  plot_data$MethodLabel <- method_labels[plot_data$Method]
-  plot_data$MethodLabel <- factor(plot_data$MethodLabel, levels = method_labels[unique(plot_data$Method)])
+  plot_data$MethodLabel <- SPEEDUP_METHOD_LABELS_CN[plot_data$Method]
+  plot_data$MethodLabel <- factor(plot_data$MethodLabel, levels = SPEEDUP_METHOD_LABELS_CN[unique(plot_data$Method)])
 
   p <- ggplot(plot_data, aes(x = K, y = Speedup, color = MethodLabel, linetype = MethodLabel)) +
     geom_line(linewidth = 1.2) +
@@ -1281,6 +1290,7 @@ plot_sgd_convergence <- function(sgd_results, output_file = NULL) {
 #' p <- plot_complexity_accuracy(results, "fig6_complexity_accuracy.svg")
 plot_complexity_accuracy <- function(results, output_file = NULL) {
   models <- c("OLS", "Polynomial", "Ridge", "GAM", "Kernel", "Partial_Linear")
+  ensure_model_labels(models)
 
   # 定义模型复杂度（主观评分，基于参数数量和计算复杂度）
   complexity <- c(

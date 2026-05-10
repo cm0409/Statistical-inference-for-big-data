@@ -72,6 +72,7 @@ METHOD_LABELS <- c(
   "Stratified-SGD->Aggregate" = "分层SGD→聚合",
   "Hybrid_One-step->SGD" = "综合方案：一步估计→SGD"
 )
+MODE_LABELS <- c(quick = "快速", full = "完整")
 
 translate_label <- function(values, mapping) {
   values <- as.character(values)
@@ -84,14 +85,14 @@ translate_label <- function(values, mapping) {
 # 若 track 仅包含特殊字符，则使用 codepoints 作为回退 / Fallback to codepoints when the name contains only special characters
 sanitize_track_slug <- function(track_name) {
   slug <- tolower(track_name)
-  # 保留字母/数字/中文字符，其他字符替换为下划线 / Keep letters, digits, and Han characters
+  # 保留字母/数字/中文字符，其他字符替换为下划线（\p{Han} 含中日韩文字） / Keep letters, digits, and Han characters
   slug <- gsub("[^[:alnum:]\\p{Han}]+", "_", slug, perl = TRUE)
   slug <- gsub("^_+|_+$", "", slug)
   if (slug == "") {
     codepoints <- utf8ToInt(track_name)
     codepoint_suffix <- paste(length(codepoints), paste(codepoints, collapse = "_"), sep = "_")
     # 当轨道名称仅含特殊字符时，使用未命名轨道前缀并保留 codepoints 便于排查
-    # 使用完整 codepoint 序列确保不同纯特殊字符轨道仍能区分
+    # 使用完整 codepoint 序列作为唯一标识，确保不同纯特殊字符轨道仍能区分
     slug <- paste0("未命名轨道_", codepoint_suffix)
   }
   slug
@@ -888,7 +889,7 @@ run_integrated_comparison <- function(
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
   timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
   # 使用中文 run_tag，并保留下划线分隔以提升跨平台兼容性和可读性
-  mode_label <- ifelse(mode == "quick", "快速", "完整")
+  mode_label <- translate_label(mode, MODE_LABELS)
   run_tag <- paste0("综合对比_", mode_label, "_", timestamp)
 
   # 模拟主线
