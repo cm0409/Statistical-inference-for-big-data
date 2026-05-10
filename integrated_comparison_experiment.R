@@ -686,7 +686,6 @@ plot_pareto <- function(summary_df, out_file, track_name = NULL) {
   if (nrow(plot_df) == 0) return(invisible(NULL))
   p <- ggplot2::ggplot(plot_df, ggplot2::aes(x = mean_runtime_sec, y = mean_abs_error_coef, color = category, shape = method)) +
     ggplot2::geom_point(size = 3.2, alpha = 0.9) +
-    facet_layer +
     ggplot2::scale_color_viridis_d(option = "C") +
     ggplot2::labs(
       title = title_text,
@@ -695,6 +694,9 @@ plot_pareto <- function(summary_df, out_file, track_name = NULL) {
       color = "Category / 类别",
       shape = "Method / 方法"
     )
+  if (!is.null(facet_layer)) {
+    p <- p + facet_layer
+  }
   ggplot2::ggsave(out_file, p, width = 11, height = 6, dpi = 300)
 }
 
@@ -713,9 +715,11 @@ plot_coverage_width <- function(summary_df, out_file, track_name = NULL) {
     ggplot2::geom_col(alpha = 0.85) +
     ggplot2::geom_point(ggplot2::aes(y = pmin(1, mean_ci_width_coef / ci_width_normalizer)), color = "black", size = 1.8) +
     ggplot2::coord_flip() +
-    facet_layer +
     ggplot2::scale_fill_viridis_d(option = "D") +
     ggplot2::labs(title = title_text, x = "方法配置", y = "覆盖率（黑点为归一化区间宽度）", fill = "类别")
+  if (!is.null(facet_layer)) {
+    p <- p + facet_layer
+  }
   ggplot2::ggsave(out_file, p, width = 12, height = 7, dpi = 300)
 }
 
@@ -731,10 +735,12 @@ plot_convergence <- function(convergence_df, out_file, track_name = NULL) {
   if (nrow(plot_df) == 0) return(invisible(NULL))
   p <- ggplot2::ggplot(plot_df, ggplot2::aes(x = iteration, y = loss, color = method)) +
     ggplot2::geom_line(alpha = 0.85, linewidth = 0.8) +
-    facet_layer +
     ggplot2::scale_y_log10() +
     ggplot2::scale_color_viridis_d(option = "B") +
     ggplot2::labs(title = title_text, x = "迭代次数", y = "损失（MSE，对数）", color = "方法")
+  if (!is.null(facet_layer)) {
+    p <- p + facet_layer
+  }
   ggplot2::ggsave(out_file, p, width = 11, height = 6, dpi = 300)
 }
 
@@ -861,8 +867,8 @@ run_integrated_comparison <- function(
   plot_radar(summary_table, file.path(output_dir, paste0(run_tag, "_fig_radar.png")))
 
   track_order <- c("Simulation", "Empirical")
-  tracks <- track_order[track_order %in% unique(summary_table$track)]
-  tracks <- c(tracks, setdiff(unique(summary_table$track), tracks))
+  tracks <- unique(summary_table$track)
+  tracks <- c(intersect(track_order, tracks), setdiff(tracks, track_order))
   for (track_name in tracks) {
     track_slug <- tolower(track_name)
     plot_pareto(summary_table, file.path(output_dir, paste0(run_tag, "_fig_speed_accuracy_pareto_", track_slug, ".png")), track_name)
