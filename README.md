@@ -34,7 +34,7 @@
    - 综合方案收益表
    - 预算视角总表（时间/内存/样本访问）
    - 帕累托图、覆盖率-区间宽度图、收敛曲线、雷达图
-   - 分轨输出：同一 run_tag 下分别输出 Simulation/Empirical 图（文件名包含 `_simulation`/`_empirical`）
+   - 分轨输出：同一 run_tag 下分别输出 Simulation/Empirical 图（文件名包含 track 小写后缀，如 `_simulation`/`_empirical`）
    - 运行日志
 
 ### 运行方式

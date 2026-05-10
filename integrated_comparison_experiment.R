@@ -59,6 +59,14 @@ EPSILON_DENOMINATOR <- 1e-8
 MIN_CI_WIDTH_DENOMINATOR <- 1e-10
 DEFAULT_TRACK_ORDER <- c("Simulation", "Empirical")
 
+sanitize_track_slug <- function(track_name) {
+  slug <- tolower(track_name)
+  slug <- gsub("[^a-z0-9]+", "_", slug)
+  slug <- gsub("^_+|_+$", "", slug)
+  if (slug == "") slug <- "track"
+  slug
+}
+
 downsample_history <- function(history_vec, max_points = MAX_CONVERGENCE_POINTS) {
   round(seq(1, length(history_vec), length.out = min(max_points, length(history_vec))))
 }
@@ -798,7 +806,8 @@ run_integrated_comparison <- function(
     mode = c("quick", "full"),
     output_dir = file.path(getwd(), "output", "unified_comparison"),
     empirical_path = file.path(getwd(), "data", "yellow_tripdata_2023-01.parquet"),
-    seed = 20260417
+    seed = 20260417,
+    track_order = DEFAULT_TRACK_ORDER
 ) {
   mode <- match.arg(mode)
   set.seed(seed)
@@ -871,9 +880,9 @@ run_integrated_comparison <- function(
   plot_radar(summary_table, file.path(output_dir, paste0(run_tag, "_fig_radar.png")))
 
   tracks <- unique(summary_table$track)
-  tracks <- c(intersect(DEFAULT_TRACK_ORDER, tracks), setdiff(tracks, DEFAULT_TRACK_ORDER))
+  tracks <- c(intersect(track_order, tracks), setdiff(tracks, track_order))
   for (track_name in tracks) {
-    track_slug <- tolower(track_name)
+    track_slug <- sanitize_track_slug(track_name)
     plot_pareto(summary_table, file.path(output_dir, paste0(run_tag, "_fig_speed_accuracy_pareto_", track_slug, ".png")), track_name)
     plot_coverage_width(summary_table, file.path(output_dir, paste0(run_tag, "_fig_coverage_width_", track_slug, ".png")), track_name)
     plot_convergence(all_convergence, file.path(output_dir, paste0(run_tag, "_fig_convergence_", track_slug, ".png")), track_name)
