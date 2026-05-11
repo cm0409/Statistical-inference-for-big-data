@@ -1,0 +1,10 @@
+统一横向对比实验日志
+run_tag: integrated_full_20260417_232946
+mode: full
+timestamp: 2026-04-18 11:08:36.765016
+seed: 20260417
+simulation_n: 40000
+empirical_n_max: 6e+05
+reps: 8
+methods_count: 11
+output_dir: d:/workspace/Statistical-inference-for-big-data/output/unified_comparison
